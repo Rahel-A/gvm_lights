@@ -22,8 +22,14 @@ use bluster::{
 const ADVERTISING_NAME: &str = "hello";
 const ADVERTISING_TIMEOUT: Duration = Duration::from_secs(60);
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() {
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(async {
+        main_async().await.unwrap();
+    })
+}
+
+async fn main_async() -> Result<(), Box<dyn std::error::Error>> {
     if let Err(err) = pretty_env_logger::try_init() {
         eprintln!("WARNING: failed to initialize logging framework: {}", err);
     }
