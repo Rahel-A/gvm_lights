@@ -23,7 +23,12 @@ const ADVERTISING_NAME: &str = "hello";
 const ADVERTISING_TIMEOUT: Duration = Duration::from_secs(60);
 
 fn main() {
-    let rt = tokio::runtime::Runtime::new().unwrap();
+    let mut rt = tokio::runtime::Runtime::new().unwrap();
+    // let rt = tokio::runtime::Builder::new_multi_thread()
+    //             .worker_threads(4)
+    //             .thread_name("threaded_tokio_runtime")
+    //             .build()
+    //             .unwrap();
     rt.block_on(async {
         main_async().await.unwrap();
     })
@@ -179,7 +184,7 @@ async fn main_async() -> Result<(), Box<dyn std::error::Error>> {
             .unwrap();
         println!("Peripheral started advertising");
         let ad_check = async { while !peripheral.is_advertising().await.unwrap() {} };
-        let timeout = tokio::time::sleep(ADVERTISING_TIMEOUT);
+        let timeout = tokio::time::delay_for(ADVERTISING_TIMEOUT);
         futures::join!(ad_check, timeout);
         peripheral.stop_advertising().await.unwrap();
         while peripheral.is_advertising().await.unwrap() {}
