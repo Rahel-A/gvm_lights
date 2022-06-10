@@ -17,7 +17,7 @@ impl GvmClient {
         // socket.set_broadcast(true)?;
         // let (n, peer) = socket.recv_from(&mut buf).await?;
         let msg = encode(cmd)?;
-        let sent_bytes = self.socket.send_to(&msg, &format!("{}:2525", target)).await?;
+        let _sent_bytes = self.socket.send_to(&msg, &format!("{}:2525", target)).await?;
         trace!("{:X?}", msg);
         Ok(())
     }
