@@ -1,25 +1,25 @@
-use clap::{Arg, App};
+use clap::{Arg, Command};
 use gvm_lights::{GvmBleClient, ControlMessage, LightCmd};
 use std::str::FromStr;
 
 #[async_std::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let matches = App::new("GVM Lights")
+    let matches = Command::new("GVM Lights")
         .version("0.1.0")
-        .arg(Arg::with_name("light")
+        .arg(Arg::new("l")
                   .long("light")
                   .takes_value(true)
                   .possible_values(&["on", "off"]))
-        .arg(Arg::with_name("br")
+        .arg(Arg::new("b")
                   .long("br")
                   .takes_value(true))
-        .arg(Arg::with_name("t")
-                  .long("t")
+        .arg(Arg::new("t")
+                  .long("temp")
                   .takes_value(true))
-        .arg(Arg::with_name("hue")
+        .arg(Arg::new("h")
                   .long("hue")
                   .takes_value(true))
-        .arg(Arg::with_name("sat")
+        .arg(Arg::new("s")
                   .long("sat")
                   .takes_value(true))
         .get_matches();
