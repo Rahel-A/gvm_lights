@@ -58,9 +58,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     };
 
-    let client = GvmClient::new("192.168.4.2").await?;
+    let client1 = GvmBleClient::new("A4:C1:38:EE:86:C1").await?;
+    let client2 = GvmBleClient::new("A4:C1:38:8D:61:45").await?;
     
-    let sent_bytes = client.send_to(&"192.168.4.1", &cmd).await?;
-    println!("{:?}", sent_bytes);
+    client1.send_to(&cmd).await?.close().await?;
+    time::sleep(Duration::from_millis(300)).await;
+    client2.send_to(&cmd).await?.close().await?;
     Ok(())
 }

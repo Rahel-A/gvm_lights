@@ -62,7 +62,10 @@ pub fn encode(msg: &ControlMessage) -> Result<Vec<u8>, Box<dyn std::error::Error
     let mut crc16 = CRC::crc16xmodem();
     crc16.digest(&buf_decoded);
     let crc_str = hex::encode_upper(crc16.get_crc_vec_be());
-    
+
     buf.extend_from_slice(crc_str.as_bytes());
+
+    buf.extend_from_slice(b"FF");
+
     Ok(buf)
 }
