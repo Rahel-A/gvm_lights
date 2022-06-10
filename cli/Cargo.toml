@@ -9,6 +9,7 @@ edition = "2018"
 [dependencies]
 clap = "*"
 gvm-lights = { path = "../gvm_lights" }
+tokio = { version = "1", features = ["full"] }
 
 [dependencies.async-std]
 version = "1.0.0"

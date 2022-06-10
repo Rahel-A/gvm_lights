@@ -1,8 +1,10 @@
 use clap::{Arg, Command};
 use gvm_lights::{GvmBleClient, ControlMessage, LightCmd};
 use std::str::FromStr;
+use std::time::Duration;
+use tokio::time;
 
-#[async_std::main]
+#[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let matches = Command::new("GVM Lights")
         .version("0.1.0")
