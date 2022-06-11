@@ -6,27 +6,38 @@ use tokio::time;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let brightness = "brightness";
+    let temperature = "temperature";
+    let hue = "hue";
+    let saturation = "saturation";
+    let server = "server";
+    let light = "light";
     let matches = Command::new("GVM Lights")
         .version("0.1.0")
-        .arg(Arg::new("l")
-                  .long("light")
+        .arg(Arg::new(light)
+                  .long(light)
+                  .short('l')
                   .takes_value(true)
                   .possible_values(&["on", "off"]))
-        .arg(Arg::new("b")
-                  .long("br")
+        .arg(Arg::new(brightness)
+                  .long(brightness)
+                  .short('b')
                   .takes_value(true))
-        .arg(Arg::new("t")
-                  .long("temp")
+        .arg(Arg::new(temperature)
+                  .long(temperature)
+                  .short('t')
                   .takes_value(true))
-        .arg(Arg::new("h")
-                  .long("hue")
+        .arg(Arg::new(hue)
+                  .long(hue)
+                  .short('h')
                   .takes_value(true))
-        .arg(Arg::new("s")
-                  .long("sat")
+        .arg(Arg::new(saturation)
+                  .long(saturation)
+                  .short('s')
                   .takes_value(true))
         .get_matches();
 
-    let cmd = match matches.value_of("light") {
+    let cmd = match matches.value_of(light) {
         Some("on") => { 
             println!("on");
             ControlMessage::Light(LightCmd::On)
@@ -36,20 +47,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             ControlMessage::Light(LightCmd::Off)
         },
         _ => {
-            if matches.is_present("br") {
-                let br = u8::from_str(matches.value_of("br").ok_or("No value for brightness")?)?;
+            if matches.is_present(brightness) {
+                let br = u8::from_str(matches.value_of(brightness).ok_or("No value for brightness")?)?;
                 println!("br={}", br);
                 ControlMessage::SetBrightness(br)
-            } else if matches.is_present("t") {
-                let t = u16::from_str(matches.value_of("t").ok_or("No value for temperature")?)?;
-                println!("t={}", t);
+            } else if matches.is_present(temperature) {
+                let t = u16::from_str(matches.value_of(temperature).ok_or("No value for temperature")?)?;
+                println!("temp={}", t);
                 ControlMessage::SetTemperature(t)
-            } else if matches.is_present("hue") {
-                let hue = u16::from_str(matches.value_of("hue").ok_or("No value for hue")?)?;
+            } else if matches.is_present(hue) {
+                let hue = u16::from_str(matches.value_of(hue).ok_or("No value for hue")?)?;
                 println!("hue={}", hue);
                 ControlMessage::SetHue(hue)
-            } else if matches.is_present("sat") {
-                let sat = u8::from_str(matches.value_of("sat").ok_or("No value for sat")?)?;
+            } else if matches.is_present(saturation) {
+                let sat = u8::from_str(matches.value_of(saturation).ok_or("No value for sat")?)?;
                 println!("sat={}", sat);
                 ControlMessage::SetSaturation(sat)
             } else {
