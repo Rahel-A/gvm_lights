@@ -9,11 +9,12 @@ edition = "2018"
 [dependencies]
 crc-any = "2.3"
 hex = "0.3"
-log = "*"
 tokio = { version = "1", features = ["full"] }
 btleplug = { version = "0.9", features = ["serde"] }
 itertools = "*"
 uuid = "*"
+log = "*"
+futures = "*"
 
 [dependencies.async-std]
 version = "1.0.0"

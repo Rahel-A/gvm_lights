@@ -1,16 +1,28 @@
 use crc_any::CRC;
 
+#[derive(Debug)]
 pub enum LightCmd {
     On,
     Off,
 }
 
+#[derive(Debug)]
+pub enum ModeCmd {
+    ColourTemp,
+    HueSat,
+    Scenes,
+}
+
+#[derive(Debug)]
 pub enum ControlMessage {
     Light(LightCmd),
-    SetBrightness(u8),
-    SetTemperature(u16),
-    SetHue(u16),
-    SetSaturation(u8),
+    Brightness(u8),
+    Temperature(u16),
+    Hue(u16),
+    Saturation(u8),
+    RGB(u8),
+    Scene(u8),
+    Mode(ModeCmd)
 }
 
 pub fn encode(msg: &ControlMessage) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
@@ -24,12 +36,17 @@ pub fn encode(msg: &ControlMessage) -> Result<Vec<u8>, Box<dyn std::error::Error
                 LightCmd::Off => (b"00", b"00".to_vec()),
             }
         },
-        ControlMessage::SetBrightness(br) => {
+        ControlMessage::RGB(rgb) => { // TODO: what is this (hue?)?
+            let rgb = if *rgb >= 255 { 255 }
+                      else { *rgb };
+            (b"01", hex::encode_upper([rgb]).into_bytes())
+        },
+        ControlMessage::Brightness(br) => {
             let br = if *br > 100 { 100 }
                         else { *br };
             (b"02", hex::encode_upper([br]).into_bytes())
         },
-        ControlMessage::SetTemperature(t) => {
+        ControlMessage::Temperature(t) => {
             let t = if *t < 3200 { 3200 }
                     else {
                         if *t > 5600 { 5600 }
@@ -37,15 +54,27 @@ pub fn encode(msg: &ControlMessage) -> Result<Vec<u8>, Box<dyn std::error::Error
                     };
             (b"03", hex::encode_upper([(t / 100) as u8]).into_bytes())
         },
-        ControlMessage::SetHue(hue) => {
+        ControlMessage::Hue(hue) => {
             let hue = if *hue > 360 { 360 }
                       else { *hue };
             (b"04", hex::encode_upper([(hue / 5) as u8]).into_bytes())
         },
-        ControlMessage::SetSaturation(sat) => {
+        ControlMessage::Saturation(sat) => {
             let sat = if *sat > 100 { 100 }
                       else { *sat };
             (b"05", hex::encode_upper([sat]).into_bytes())
+        },
+        ControlMessage::Mode(mode) => {
+            match mode {
+                ModeCmd::ColourTemp  => (b"06", b"01".to_vec()),
+                ModeCmd::HueSat => (b"06", b"02".to_vec()),
+                ModeCmd::Scenes => (b"06", b"03".to_vec()),
+            }
+        },
+        ControlMessage::Scene(scene) => {
+            let scene = if *scene > 8 { 0 }
+                      else { *scene };
+            (b"07", hex::encode_upper([scene]).into_bytes())
         },
     };
 

@@ -10,6 +10,8 @@ edition = "2018"
 clap = "*"
 gvm-lights = { path = "../gvm_lights" }
 tokio = { version = "1", features = ["full"] }
+pretty_env_logger = "*"
+log = "*"
 
 [dependencies.async-std]
 version = "1.0.0"
