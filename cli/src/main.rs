@@ -62,16 +62,32 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .arg(Arg::new(server)
                   .long(server)
                   .short('x')
-                  .takes_value(false))
+                  .multiple_occurrences(true)
+                  .takes_value(true))
         .get_matches();
 
     if matches.is_present(server) {
         let listener = TcpListener::bind("127.0.0.1:8631").await?;
 
-        let client1 = GvmBleClient::new("A4:C1:38:EE:86:C1").await?;
-        let client2 = GvmBleClient::new("A4:C1:38:8D:61:45").await?;
-        client1.get_state().await?;
-        client2.get_state().await?;
+        let mut clients: Vec<GvmBleClient> = Vec::new();
+        for bt_address in matches.values_of(server).unwrap().into_iter() {
+            clients.push(GvmBleClient::new(bt_address).await?)
+        };
+
+        let tasks: Vec<_> = clients
+            .into_iter()
+            .map(|client| {
+                tokio::spawn(async {
+                    client.get_state().await.expect("Failed to read current state");
+                    client
+                })
+            })
+            .collect();
+        // await the tasks for resolve's to complete and give back our items
+        let mut clients = vec![];
+        for task in tasks {
+            clients.push(task.await.unwrap());
+        }
 
         loop {
             let (socket, _) = listener.accept().await?;
@@ -81,9 +97,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let n = socket.try_read(&mut buffer)?;
             info!("Received message from client! {:?}", &buffer[..n]);
 
-            client1.send_to(&buffer[..n]).await?;
+            clients[0].send_to(&buffer[..n]).await?;
             time::sleep(Duration::from_millis(30)).await;
-            client2.send_to(&buffer[..n]).await?;
+            clients[1].send_to(&buffer[..n]).await?;
         }
     }
     else {

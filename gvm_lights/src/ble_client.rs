@@ -149,7 +149,6 @@ impl GvmBleClient {
             &msg_formatted,
             WriteType::WithoutResponse).await?;
 
-        info!("Checking notifications");
         let mut notification_stream =
             light.notifications().await?.take(1);
         // Process while the BLE connection is not broken or stopped.
