@@ -11,10 +11,10 @@ crc-any = "2.3"
 hex = "0.3"
 tokio = { version = "1", features = ["full"] }
 btleplug = { version = "0.9", features = ["serde"] }
-itertools = "*"
-uuid = "*"
-log = "*"
-futures = "*"
+itertools = "0.10"
+uuid = "0.8"
+log = "0.4"
+futures = "0.3"
 
 [dependencies.async-std]
 version = "1.0.0"

@@ -7,10 +7,11 @@ use log::info;
 use tokio::time;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::io::{AsyncWriteExt};
+use dotenv::dotenv;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    pretty_env_logger::init();
+    // argument strings
     let brightness = "brightness";
     let temperature = "temperature";
     let hue = "hue";
@@ -20,6 +21,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let scene = "scene";
     let mode = "mode";
     let rgb = "rgb";
+
+    let address = format!("{}:{}",
+        dotenv::var("APP_HOST").unwrap_or("127.0.0.1".to_string()),
+        dotenv::var("APP_PORT").unwrap_or("8631".to_string()));
+
+    pretty_env_logger::init();
+    dotenv().ok();
+
     let matches = Command::new("GVM Lights")
         .version("0.1.0")
         .arg(Arg::new(light)
@@ -62,18 +71,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .arg(Arg::new(server)
                   .long(server)
                   .short('x')
-                  .multiple_occurrences(true)
-                  .takes_value(true))
+                  .takes_value(false))
         .get_matches();
 
     if matches.is_present(server) {
-        let listener = TcpListener::bind("127.0.0.1:8631").await?;
+        println!("Opening server on interface: {}", address);
+        let listener = TcpListener::bind(address).await?;
 
         let mut clients: Vec<GvmBleClient> = Vec::new();
-        for bt_address in matches.values_of(server).unwrap().into_iter() {
-            clients.push(GvmBleClient::new(bt_address).await?)
+        match dotenv::var("clients") {
+            Ok(_clients) =>
+                for bt_address in _clients.split(',').collect::<Vec<_>>().into_iter() {
+                    clients.push(GvmBleClient::new(bt_address).await?)
+                },
+            _ => panic!("Can't initialise server without target GVM lights")
         };
-
+    
         let tasks: Vec<_> = clients
             .into_iter()
             .map(|client| {
@@ -145,7 +158,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             } else {
                 panic!("Not recognized command");
             };
-        let mut stream = TcpStream::connect("127.0.0.1:8631").await?;
+        let mut stream = TcpStream::connect(address).await?;
         stream.write_all(&encode(&cmd)?).await?;
         info!("Sending message to server! {:?}", &cmd);
 
