@@ -110,9 +110,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let n = socket.try_read(&mut buffer)?;
             info!("Received message from client! {:?}", &buffer[..n]);
 
-            clients[0].send_to(&buffer[..n]).await?;
+            let cmd = encode(&serde_json::from_slice(&buffer[..n])?)?;
+            clients[0].send_to(&cmd).await?;
             time::sleep(Duration::from_millis(30)).await;
-            clients[1].send_to(&buffer[..n]).await?;
+            clients[1].send_to(&cmd).await?;
         }
     }
     else {
@@ -159,9 +160,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 panic!("Not recognized command");
             };
         let mut stream = TcpStream::connect(address).await?;
-        stream.write_all(&encode(&cmd)?).await?;
-        info!("Sending message to server! {:?}", &cmd);
-
+        let cmd_json = serde_json::to_string(&cmd)?;
+        stream.write_all(cmd_json.as_bytes()).await?;
+        info!("Sending message to server! {:?}", &cmd_json);
     };
 
     Ok(())

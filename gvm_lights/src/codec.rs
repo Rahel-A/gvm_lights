@@ -1,19 +1,20 @@
 use crc_any::CRC;
+use serde::{Serialize, Deserialize};
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum LightCmd {
     On,
     Off,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum ModeCmd {
     ColourTemp,
     HueSat,
     Scenes,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum ControlMessage {
     Light(LightCmd),
     Brightness(u8),
