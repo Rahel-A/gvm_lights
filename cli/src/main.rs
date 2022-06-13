@@ -9,6 +9,29 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio::io::{AsyncWriteExt};
 use dotenv::dotenv;
 
+#[cfg(not(debug_assertions))]
+async fn get_current_state(clients: Vec<GvmBleClient>) -> Vec<GvmBleClient> {
+    clients
+}
+#[cfg(debug_assertions)]
+async fn get_current_state(clients: Vec<GvmBleClient>) -> Vec<GvmBleClient> {
+    let tasks: Vec<_> = clients
+        .into_iter()
+        .map(|client| {
+            tokio::spawn(async {
+                client.get_state().await.expect("Failed to read current state");
+                client
+            })
+        })
+        .collect();
+    // await the tasks for resolve's to complete and give back our items
+    let mut clients = vec![];
+    for task in tasks {
+        clients.push(task.await.unwrap());
+    };
+    clients
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // argument strings
@@ -86,21 +109,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 },
             _ => panic!("Can't initialise server without target GVM lights")
         };
-    
-        let tasks: Vec<_> = clients
-            .into_iter()
-            .map(|client| {
-                tokio::spawn(async {
-                    client.get_state().await.expect("Failed to read current state");
-                    client
-                })
-            })
-            .collect();
-        // await the tasks for resolve's to complete and give back our items
-        let mut clients = vec![];
-        for task in tasks {
-            clients.push(task.await.unwrap());
-        }
+
+        clients = get_current_state(clients).await;
 
         loop {
             let (socket, _) = listener.accept().await?;
