@@ -23,7 +23,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let rgb = "rgb";
 
     let address = format!("{}:{}",
-        dotenv::var("APP_HOST").unwrap_or("127.0.0.1".to_string()),
+        dotenv::var("APP_HOST").unwrap_or("0.0.0.0".to_string()),
         dotenv::var("APP_PORT").unwrap_or("8631".to_string()));
 
     pretty_env_logger::init();
