@@ -94,6 +94,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .arg(Arg::new(server)
                   .long(server)
                   .short('x')
+                  .exclusive(true)
                   .takes_value(false))
         .get_matches();
 
