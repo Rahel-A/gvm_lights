@@ -4,6 +4,8 @@ use uuid::Uuid;
 use itertools::Itertools;
 use log::info;
 use futures::stream::StreamExt;
+use std::sync::Arc;
+use serde::{Serialize, Deserialize};
 
 use btleplug::api::{Characteristic, Central, Manager as _, Peripheral,
     ScanFilter, WriteType, CharPropFlags};
@@ -11,9 +13,17 @@ use btleplug::platform::{Adapter, Manager, Peripheral as UnknownPeripherals};
 
 use crate::{ControlMessage, LightCmd};
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ServerMessage {
+    pub client: u8,
+    pub msg: Vec<ControlMessage>
+}
+
+#[derive(Clone)]
 pub struct GvmBleClient {
-    adapter: UnknownPeripherals,
-    characteric: Characteristic
+    id: u8,
+    adapter: Arc::<UnknownPeripherals>,
+    characteric: Arc::<Characteristic>
 }
 
 const LIGHT_CHARACTERISTIC_UUID: Uuid = Uuid::from_u128(0x00010203_0405_0607_0809_0a0b0c0d2b10);
@@ -33,10 +43,13 @@ async fn find_gvm_light(central: &Adapter, address: &str) -> Option<UnknownPerip
 }
 
 impl GvmBleClient {
+    pub fn id(&self) -> u8 {
+        self.id
+    }
     pub async fn close(&self) -> Result<(), Box<dyn std::error::Error>> {
         Ok(self.adapter.disconnect().await?)
     }
-    pub async fn new(local_addr: &str)
+    pub async fn new(counter: u8, local_addr: &str)
         -> Result<GvmBleClient, Box<dyn std::error::Error>> {
         let manager = Manager::new().await?;
         let adapter_list = manager.adapters().await?;
@@ -77,11 +90,11 @@ impl GvmBleClient {
             light.subscribe(&cmd_char).await?;
 
         }
-
         Ok(GvmBleClient {
-                adapter: light,
-                characteric: cmd_char.clone()
-            })
+            id: counter,
+            adapter: Arc::new(light),
+            characteric: Arc::new(cmd_char.clone())
+        })
     }
 
     // send a request to read initial values:

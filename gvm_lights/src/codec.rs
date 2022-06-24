@@ -1,20 +1,20 @@
 use crc_any::CRC;
 use serde::{Serialize, Deserialize};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Clone, Copy, Debug, Serialize, Deserialize)]
 pub enum LightCmd {
     On,
     Off,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Clone, Copy, Debug, Serialize, Deserialize)]
 pub enum ModeCmd {
     ColourTemp,
     HueSat,
     Scenes,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Clone, Copy, Debug, Serialize, Deserialize)]
 pub enum ControlMessage {
     Light(LightCmd),
     Brightness(u8),
@@ -23,10 +23,11 @@ pub enum ControlMessage {
     Saturation(u8),
     RGB(u8),
     Scene(u8),
-    Mode(ModeCmd)
+    Mode(ModeCmd),
+    ReadState()
 }
 
-pub fn encode(msg: &ControlMessage) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+pub fn encode(msg: &ControlMessage) -> Result<Vec<u8>, hex::FromHexError> {
     let dev_id = b"00";
     let dev_type = b"30";
 
@@ -77,6 +78,9 @@ pub fn encode(msg: &ControlMessage) -> Result<Vec<u8>, Box<dyn std::error::Error
                       else { *scene };
             (b"07", hex::encode_upper([scene]).into_bytes())
         },
+        _ => {
+            panic!("Don't know how to encode {:?}", msg);
+        }
     };
 
     let mut buf = Vec::<u8>::new();

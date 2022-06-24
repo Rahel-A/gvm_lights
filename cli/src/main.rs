@@ -1,36 +1,10 @@
 use clap::{Arg, Command, PossibleValue};
-use gvm_lights::{GvmBleClient, ControlMessage, LightCmd, ModeCmd};
+use gvm_lights::{GvmBleClient, ServerMessage, ControlMessage, LightCmd, ModeCmd};
 use gvm_lights::encode;
-use std::str::FromStr;
-use std::time::Duration;
 use log::info;
-use tokio::time;
 use tokio::net::{TcpListener, TcpStream};
-use tokio::io::{AsyncWriteExt};
+use tokio::io::{AsyncWriteExt, AsyncReadExt};
 use dotenv::dotenv;
-
-#[cfg(not(debug_assertions))]
-async fn get_current_state(clients: Vec<GvmBleClient>) -> Vec<GvmBleClient> {
-    clients
-}
-#[cfg(debug_assertions)]
-async fn get_current_state(clients: Vec<GvmBleClient>) -> Vec<GvmBleClient> {
-    let tasks: Vec<_> = clients
-        .into_iter()
-        .map(|client| {
-            tokio::spawn(async {
-                client.get_state().await.expect("Failed to read current state");
-                client
-            })
-        })
-        .collect();
-    // await the tasks for resolve's to complete and give back our items
-    let mut clients = vec![];
-    for task in tasks {
-        clients.push(task.await.unwrap());
-    };
-    clients
-}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -44,6 +18,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let scene = "scene";
     let mode = "mode";
     let rgb = "rgb";
+    let client = "client";
+    let state = "state";
     let validator_u8 = |s:&str| s.parse::<u8>();
     let validator_u16 = |s:&str| s.parse::<u16>();
 
@@ -102,8 +78,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .arg(Arg::new(server)
                   .long(server)
                   .short('x')
-                  .exclusive(true)
                   .takes_value(false))
+        .arg(Arg::new(state)
+                  .long(state)
+                  .short('i')
+                  .takes_value(false))
+        .arg(Arg::new(client)
+                  .long(client)
+                  .default_value("255")
+                  .validator(|s: &str| if s == "all" { Ok(255) } else { s.parse::<u8>() })
+                  .short('c')
+                  .takes_value(true))
         .get_matches();
 
     if matches.is_present(server) {
@@ -112,30 +97,68 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         let mut clients: Vec<GvmBleClient> = Vec::new();
         match dotenv::var("clients") {
-            Ok(_clients) =>
+            Ok(_clients) => {
+                let mut counter = 1;
                 for bt_address in _clients.split(',').collect::<Vec<_>>().into_iter() {
-                    clients.push(GvmBleClient::new(bt_address).await?)
-                },
+                    clients.push(GvmBleClient::new(counter, bt_address).await?);
+                    counter = counter + 1;
+                };
+            },
             _ => panic!("Can't initialise server without target GVM lights")
         };
 
-        clients = get_current_state(clients).await;
 
         loop {
-            let (socket, _) = listener.accept().await?;
+            let (mut socket, _) = listener.accept().await?;
             socket.readable().await?;
 
             let mut buffer = [0; 50];
             let n = socket.try_read(&mut buffer)?;
             info!("Received message from client! {:?}", &buffer[..n]);
 
-            let cmd = encode(&serde_json::from_slice(&buffer[..n])?)?;
-            clients[0].send_to(&cmd).await?;
-            time::sleep(Duration::from_millis(30)).await;
-            clients[1].send_to(&cmd).await?;
+            match serde_json::from_slice(&buffer[..n]) {
+                Ok(ServerMessage{client, msg}) => {
+                    let filtered_clients: Vec<_> = clients
+                        .clone()
+                        .into_iter()
+                        // select either a target client or ALL clients
+                        .filter(|gvm_client| gvm_client.id() == client || client == 255)
+                        .collect();
+                    for gvm_client in filtered_clients {
+                        // client can send multiple commands (actions)
+                        for action in msg.iter() {
+                            // get list of states of the gvm client to send back
+                            let states = match action {
+                                ControlMessage::ReadState() =>
+                                    gvm_client.get_state()
+                                        .await
+                                        .unwrap(),
+                                _ => {
+                                    gvm_client.send_to(&encode(&action).unwrap())
+                                        .await
+                                        .expect("Failed to send message to GVM Client");
+                                    vec![]
+                                },
+                            };
+                            // if there is a message to send back, do it here...
+                            if !states.is_empty() {
+                                let cmd_json = serde_json::to_string(&states
+                                    .into_iter()
+                                    .map(|state| ServerMessage{client:gvm_client.id(), msg:vec![state]})
+                                    .collect::<Vec<ServerMessage>>())?;
+                                socket.write(cmd_json.as_bytes()).await?;
+                                socket.write("\n".as_bytes()).await?;
+                                socket.flush().await?;
+                            };
+                        }
+                    }
+                },
+                _ => eprintln!("Received unexpected message from client"),
+            }
         }
     }
     else {
+        let target = matches.value_of(client).unwrap().parse();
         let cmd =
             if matches.is_present(light) {
                 match matches.value_of(light) {
@@ -163,13 +186,31 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 ControlMessage::Scene(scene.parse().unwrap())
             } else if let Some(rgb) = matches.value_of(rgb) {
                 ControlMessage::RGB(rgb.parse().unwrap())
+            } else if matches.is_present(state) {
+                ControlMessage::ReadState()
             } else {
                 panic!("Not recognized command");
             };
         let mut stream = TcpStream::connect(address).await?;
-        let cmd_json = serde_json::to_string(&cmd)?;
+        let cmd_json = serde_json::to_string(&ServerMessage{client:target.unwrap(), msg:vec!(cmd)})?;
         stream.write_all(cmd_json.as_bytes()).await?;
+
         info!("Sending message to server! {:?}", &cmd_json);
+        if let ControlMessage::ReadState() = cmd {
+            loop {
+                let mut buffer = [0; 500];
+                let n = stream.read(&mut buffer).await?;
+                if let Ok(msgs) = serde_json::from_slice::<Vec<ServerMessage>>(&buffer[..n]) {
+                    for ServerMessage{client:_, msg} in msgs {
+                        info!("Received message from server! {:?}", msg);
+                    };
+                }
+                else {
+                     panic!("Unknown message from server: {:?}", String::from_utf8(buffer[..n].to_vec()));
+                };
+                break;
+            }
+        }
     };
 
     Ok(())
