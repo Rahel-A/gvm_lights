@@ -1,10 +1,10 @@
 use clap::{Arg, Command, PossibleValue};
-use gvm_lights::{GvmBleClient, ServerMessage, ControlMessage, LightCmd, ModeCmd};
-use gvm_lights::encode;
+use gvm_lights::{ServerMessage, ControlMessage, LightCmd, ModeCmd};
 use log::info;
-use tokio::net::{TcpListener, TcpStream};
+use tokio::net::TcpStream;
 use tokio::io::{AsyncWriteExt, AsyncReadExt};
 use dotenv::dotenv;
+use gvm_server::Server;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -92,70 +92,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .get_matches();
 
     if matches.is_present(server) {
-        println!("Opening server on interface: {}", address);
-        let listener = TcpListener::bind(address).await?;
-
-        let mut clients: Vec<GvmBleClient> = Vec::new();
         match dotenv::var("clients") {
-            Ok(_clients) => {
-                let mut counter = 1;
-                for bt_address in _clients.split(',').collect::<Vec<_>>().into_iter() {
-                    clients.push(GvmBleClient::new(counter, bt_address).await?);
-                    counter = counter + 1;
-                };
-            },
+            Ok(gvm_clients) => {
+                let mut server = Server::new(address, gvm_clients).await?;
+                server.run().await?;
+            }
             _ => panic!("Can't initialise server without target GVM lights")
         };
-
-
-        loop {
-            let (mut socket, _) = listener.accept().await?;
-            socket.readable().await?;
-
-            let mut buffer = [0; 50];
-            let n = socket.try_read(&mut buffer)?;
-            info!("Received message from client! {:?}", &buffer[..n]);
-
-            match serde_json::from_slice(&buffer[..n]) {
-                Ok(ServerMessage{client, msg}) => {
-                    let filtered_clients: Vec<_> = clients
-                        .clone()
-                        .into_iter()
-                        // select either a target client or ALL clients
-                        .filter(|gvm_client| gvm_client.id() == client || client == 255)
-                        .collect();
-                    for gvm_client in filtered_clients {
-                        // client can send multiple commands (actions)
-                        for action in msg.iter() {
-                            // get list of states of the gvm client to send back
-                            let states = match action {
-                                ControlMessage::ReadState() =>
-                                    gvm_client.get_state()
-                                        .await
-                                        .unwrap(),
-                                _ => {
-                                    gvm_client.send_to(&encode(&action).unwrap())
-                                        .await
-                                        .expect("Failed to send message to GVM Client");
-                                    vec![]
-                                },
-                            };
-                            // if there is a message to send back, do it here...
-                            if !states.is_empty() {
-                                let cmd_json = serde_json::to_string(&states
-                                    .into_iter()
-                                    .map(|state| ServerMessage{client:gvm_client.id(), msg:vec![state]})
-                                    .collect::<Vec<ServerMessage>>())?;
-                                socket.write(cmd_json.as_bytes()).await?;
-                                socket.write("\n".as_bytes()).await?;
-                                socket.flush().await?;
-                            };
-                        }
-                    }
-                },
-                _ => eprintln!("Received unexpected message from client"),
-            }
-        }
     }
     else {
         let target = matches.value_of(client).unwrap().parse();
