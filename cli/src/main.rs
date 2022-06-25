@@ -20,8 +20,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let rgb = "rgb";
     let client = "client";
     let state = "state";
-    let validator_u8 = |s:&str| s.parse::<u8>();
-    let validator_u16 = |s:&str| s.parse::<u16>();
+    let validator_u8 = clap::value_parser!(u8);
+    let validator_u16 = clap::value_parser!(u16);
 
     let address = format!("{}:{}",
         dotenv::var("APP_HOST").unwrap_or("0.0.0.0".to_string()),
@@ -36,44 +36,46 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                   .long(light)
                   .short('l')
                   .takes_value(true)
-                  .possible_values(&["on", "off"]))
+                  .value_parser([
+                      PossibleValue::new("on"),
+                      PossibleValue::new("off")]))
         .arg(Arg::new(brightness)
                   .long(brightness)
                   .short('b')
-                  .validator(validator_u8)
+                  .value_parser(validator_u8)
                   .takes_value(true))
         .arg(Arg::new(temperature)
                   .long(temperature)
                   .short('t')
-                  .validator(validator_u16)
+                  .value_parser(validator_u16)
                   .takes_value(true))
         .arg(Arg::new(hue)
                   .long(hue)
                   .short('h')
-                  .validator(validator_u16)
+                  .value_parser(validator_u16)
                   .takes_value(true))
         .arg(Arg::new(saturation)
                   .long(saturation)
                   .short('s')
-                  .validator(validator_u8)
+                  .value_parser(validator_u8)
                   .takes_value(true))
         .arg(Arg::new(mode)
                   .long(mode)
                   .short('m')
                   .takes_value(true)
-                  .possible_values([
+                  .value_parser([
                       PossibleValue::new("CT"),
                       PossibleValue::new("HS"),
                       PossibleValue::new("Sc")]))
         .arg(Arg::new(scene)
                   .long(scene)
                   .short('z')
-                  .validator(validator_u8)
+                  .value_parser(validator_u8)
                   .takes_value(true))
         .arg(Arg::new(rgb)
                   .long(rgb)
                   .short('r')
-                  .validator(validator_u8)
+                  .value_parser(validator_u8)
                   .takes_value(true))
         .arg(Arg::new(server)
                   .long(server)
@@ -86,7 +88,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .arg(Arg::new(client)
                   .long(client)
                   .default_value("255")
-                  .validator(|s: &str| if s == "all" { Ok(255) } else { s.parse::<u8>() })
+                  .value_parser(validator_u8)
                   .short('c')
                   .takes_value(true))
         .get_matches();
@@ -101,35 +103,34 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         };
     }
     else {
-        let target = matches.value_of(client).unwrap().parse();
+        let target = matches.get_one::<u8>(client);
         let cmd =
-            if matches.is_present(light) {
-                match matches.value_of(light) {
-                    Some("on") => ControlMessage::Light(LightCmd::On),
-                    Some("off") => ControlMessage::Light(LightCmd::Off),
-                    _  => panic!("Incorrect argument passed")
-                }
-            } else if let Some(br) = matches.value_of(brightness) {
-                ControlMessage::Brightness(br.parse().unwrap())
-            } else if let Some(t) = matches.value_of(temperature) {
-                ControlMessage::Temperature(t.parse().unwrap())
-            } else if let Some(hue) = matches.value_of(hue) {
-                ControlMessage::Hue(hue.parse().unwrap())
-            } else if let Some(sat) = matches.value_of(saturation) {
-                ControlMessage::Saturation(sat.parse().unwrap())
-            } else if matches.is_present(mode) {
-                println!("mode={}", mode);
-                match matches.value_of(mode) {
-                    Some("CT") => ControlMessage::Mode(ModeCmd::ColourTemp),
-                    Some("HS") => ControlMessage::Mode(ModeCmd::HueSat),
-                    Some("Sc") => ControlMessage::Mode(ModeCmd::Scenes),
+            if let Some(s) = matches.get_one::<String>(light) {
+                match s.as_str() {
+                    "on" => ControlMessage::Light(LightCmd::On),
+                    "off" => ControlMessage::Light(LightCmd::Off),
                     _ => panic!("Incorrect argument passed")
                 }
-            } else if let Some(scene) = matches.value_of(scene) {
-                ControlMessage::Scene(scene.parse().unwrap())
-            } else if let Some(rgb) = matches.value_of(rgb) {
-                ControlMessage::RGB(rgb.parse().unwrap())
-            } else if matches.is_present(state) {
+            } else if let Some(s) = matches.get_one::<String>(mode) {
+                match s.as_str() {
+                    "CT" => ControlMessage::Mode(ModeCmd::ColourTemp),
+                    "HS" => ControlMessage::Mode(ModeCmd::HueSat),
+                    "Sc" => ControlMessage::Mode(ModeCmd::Scenes),
+                    _ => panic!("Incorrect argument passed")
+                }
+            } else if let Some(br) = matches.get_one::<u8>(brightness) {
+                ControlMessage::Brightness(*br)
+            } else if let Some(t) = matches.get_one::<u16>(temperature) {
+                ControlMessage::Temperature(*t)
+            } else if let Some(hue) = matches.get_one::<u16>(hue) {
+                ControlMessage::Hue(*hue)
+            } else if let Some(sat) = matches.get_one::<u8>(saturation) {
+                ControlMessage::Saturation(*sat)
+            } else if let Some(scene) = matches.get_one::<u8>(scene) {
+                ControlMessage::Scene(*scene)
+            } else if let Some(rgb) = matches.get_one::<u8>(rgb) {
+                ControlMessage::RGB(*rgb)
+            } else if matches.contains_id(state) {
                 ControlMessage::ReadState()
             } else {
                 panic!("Not recognized command");
