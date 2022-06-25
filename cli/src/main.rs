@@ -1,10 +1,9 @@
 use clap::{Arg, Command, PossibleValue};
-use gvm_lights::{ServerMessage, ControlMessage, LightCmd, ModeCmd};
+use gvm_lights::{ControlMessage, LightCmd, ModeCmd};
 use log::info;
-use tokio::net::TcpStream;
-use tokio::io::{AsyncWriteExt, AsyncReadExt};
 use dotenv::dotenv;
 use gvm_server::Server;
+use gvm_cli::Client;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -135,25 +134,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             } else {
                 panic!("Not recognized command");
             };
-        let mut stream = TcpStream::connect(address).await?;
-        let cmd_json = serde_json::to_string(&ServerMessage{client:target.unwrap(), msg:vec!(cmd)})?;
-        stream.write_all(cmd_json.as_bytes()).await?;
+        info!("Parsed arguments into: {:?}", cmd);
 
-        info!("Sending message to server! {:?}", &cmd_json);
-        if let ControlMessage::ReadState() = cmd {
-            loop {
-                let mut buffer = [0; 500];
-                let n = stream.read(&mut buffer).await?;
-                if let Ok(msgs) = serde_json::from_slice::<Vec<ServerMessage>>(&buffer[..n]) {
-                    for ServerMessage{client:_, msg} in msgs {
-                        info!("Received message from server! {:?}", msg);
-                    };
-                }
-                else {
-                     panic!("Unknown message from server: {:?}", String::from_utf8(buffer[..n].to_vec()));
-                };
-                break;
-            }
+        let mut client = Client::new(address, *target.unwrap()).await?;
+        client.send_message(vec!(cmd)).await?;
+        if ControlMessage::ReadState() == cmd {
+            let msg = client.receive_message().await?;
+            info!("Received message from server: {:?}", msg);
         }
     };
 
