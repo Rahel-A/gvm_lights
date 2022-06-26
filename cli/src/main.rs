@@ -1,4 +1,3 @@
-use gvm_lights::ControlMessage;
 use log::info;
 use dotenv::dotenv;
 use gvm_server::Server;
@@ -30,10 +29,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         info!("Parsed arguments into: {:?}", cmd);
 
         let mut client = Client::new(address, *target.unwrap()).await?;
-        client.send_message(vec!(cmd)).await?;
-        if ControlMessage::ReadState() == cmd {
-            let msg = client.receive_message().await?;
-            info!("Received message from server: {:?}", msg);
+        if let Some(states) = client.send_message(vec!(cmd)).await? {
+            println!("Received message: {states:?}");
         }
     };
 

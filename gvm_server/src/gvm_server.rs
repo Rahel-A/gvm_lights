@@ -41,6 +41,8 @@ impl Server {
                         // select either a target client or ALL clients
                         .filter(|gvm_client| gvm_client.id() == client || client == 255)
                         .collect();
+                    socket.write_u8(filtered_clients.len() as u8).await?;
+                    socket.flush().await?;
                     for gvm_client in filtered_clients {
                         // client can send multiple commands (actions)
                         for action in msg.iter() {
