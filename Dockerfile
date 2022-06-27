@@ -1,4 +1,4 @@
-FROM rust:1.61
+FROM rust:1.61 as builder
 
 RUN apt-get update
 
@@ -21,8 +21,9 @@ COPY gvm_lights/src gvm_lights/src
 COPY cli/src cli/src
 RUN cargo build --release --manifest-path=cli/Cargo.toml
 
-RUN cp ./cli/target/release/gvm_cli /usr/bin/gvm_lights
-RUN rm cli gvm_lights gvm_server -rf
+FROM debian:buster-slim
+RUN apt-get update && apt-get install -y bluez bluetooth libdbus-1-3 && rm -rf /var/lib/apt/lists/*
 COPY docker-entrypoint.sh /
 ENTRYPOINT /docker-entrypoint.sh
 EXPOSE 8631
+COPY --from=builder /tmp/cli/target/release/gvm_cli /usr/local/bin/gvm_lights

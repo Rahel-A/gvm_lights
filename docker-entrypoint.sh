@@ -13,4 +13,4 @@ then
 fi
 
 
-/usr/bin/gvm_lights --server
+/usr/local/bin/gvm_lights --server
