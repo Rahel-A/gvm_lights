@@ -5,17 +5,33 @@ use tokio::io::{AsyncWriteExt, AsyncReadExt};
 
 #[derive(Debug)]
 pub struct Client {
-    uid: u8,
+    pub uid: u8,
     stream: TcpStream
 }
 
 impl Client {
     pub async fn new<A>(address: A, uid: u8)
-            -> Result<Client, Box<dyn std::error::Error>>
+            -> Result<Vec<Client>, Box<dyn std::error::Error>>
         where A: ToSocketAddrs + std::fmt::Display {
         info!("Initialising connection! {}", address);
-        let stream = TcpStream::connect(address).await?;
-        Ok(Client{uid, stream})
+        let mut stream = TcpStream::connect(&address).await?;
+        let mut clients = Vec::new();
+        if uid == 255 {
+            // create a client for each gvm light in server.
+            stream.write_all("get_clients".as_bytes()).await?;
+            let n = loop {
+                let n = stream.read_u8().await?;
+                println!("read: {n}");
+                break n;
+            };
+            for i in 0..n {
+                let stream = TcpStream::connect(&address).await?;
+                clients.push(Client{uid:i+1, stream});
+            }
+        } else {
+            clients.push(Client{uid, stream});
+        }
+        Ok(clients)
     }
 
     pub async fn send_message(&mut self, msg: Vec<ControlMessage>)

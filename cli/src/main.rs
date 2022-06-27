@@ -28,9 +28,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let cmd = gvm_cli::find_command(&matches).expect("No command detected in arguments");
         info!("Parsed arguments into: {:?}", cmd);
 
-        let mut client = Client::new(address, *target.unwrap()).await?;
-        if let Some(states) = client.send_message(vec!(cmd)).await? {
-            println!("Received message: {states:?}");
+        let id = *target.unwrap();
+        let clients = Client::new(address, id).await?;
+        for mut target in clients.into_iter().filter(|c| id == 255 || c.uid == id) {
+            if let Some(states) = target.send_message(vec!(cmd)).await? {
+                println!("Received message: {states:?}");
+            }
         }
     };
 
