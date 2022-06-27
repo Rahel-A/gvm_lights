@@ -1,5 +1,6 @@
 use crc_any::CRC;
 use serde::{Serialize, Deserialize};
+use log::trace;
 
 #[derive(PartialEq, Clone, Copy, Debug, Serialize, Deserialize)]
 pub enum LightCmd {
@@ -52,9 +53,9 @@ impl ControlMessage {
     }
 }
 
-impl From<ControlMessage> for String {
-    fn from(msg: ControlMessage) -> String {
-        let (cmd, param) = match msg {
+impl From<ControlMessage> for Vec<u8> {
+    fn from(msg: ControlMessage) -> Vec<u8> {
+        let (cmd, mut param) = match msg {
             ControlMessage::Light(param) => {
                 match param {
                     LightCmd::On  => (b"00", b"01".to_vec()),
@@ -103,11 +104,15 @@ impl From<ControlMessage> for String {
             },
             _ => panic!("Unable to convert this message")
         };
-        format!("{cmd:?}01{param:?}")
+        let mut c = cmd.to_vec();
+        c.append(&mut b"01".to_vec());
+        c.append(&mut param);
+        c
     }
 }
 
 pub fn encode(msg: &ControlMessage) -> Result<Vec<u8>, hex::FromHexError> {
+    trace!("Encoding the following message: {msg:?}");
     let dev_id = b"00";
     let dev_type = b"30";
 
@@ -116,7 +121,8 @@ pub fn encode(msg: &ControlMessage) -> Result<Vec<u8>, hex::FromHexError> {
     buf.extend_from_slice(dev_id);
     buf.extend_from_slice(dev_type);
     buf.extend_from_slice(b"5700");
-    buf.extend_from_slice(String::from(*msg).as_bytes());
+    buf.append(&mut Vec::from(*msg));
+    trace!("Encoding the following message: {:?}", &Vec::from(*msg));
     
     let buf_decoded = hex::decode(&buf)?;
     let mut crc16 = CRC::crc16xmodem();

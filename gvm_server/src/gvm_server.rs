@@ -1,6 +1,6 @@
 use gvm_lights::{GvmBleClient, ServerMessage, ControlMessage};
 use gvm_lights::encode;
-use log::info;
+use log::{info, trace};
 use tokio::net::{TcpListener, ToSocketAddrs};
 use tokio::io::AsyncWriteExt;
 
