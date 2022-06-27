@@ -38,7 +38,7 @@ impl Client {
         let states = loop {
             let n = self.stream.read_u8().await?;
             let mut client_states = Vec::new();
-            for i in 1..(1+n) {
+            for i in 0..n {
                 let states = loop {
                     let mut buffer = [0; 500];
                     let n = self.stream.read(&mut buffer).await?;
@@ -54,9 +54,9 @@ impl Client {
                          panic!("Unknown message from server: {:?}", String::from_utf8(buffer[..n].to_vec()));
                     };
                 };
-                client_states.push(ServerMessage{client: i, msg:states});
+                client_states.push(ServerMessage{client: (i+1), msg:states});
                 // Read the newline (terminator)!
-                if i != n {
+                if i != (n-1) {
                     self.stream.read_u8().await?;
                 }
             }
