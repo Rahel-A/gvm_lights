@@ -27,6 +27,31 @@ pub enum ControlMessage {
     ReadState()
 }
 
+impl ControlMessage {
+    pub fn hue(&self) -> Option<u16> {
+        if let ControlMessage::Hue(m) = self{ Some(*m) } else { None }
+    }
+    pub fn temperature(&self) -> Option<u16> {
+        if let ControlMessage::Temperature(m) = self { Some(*m) } else { None }
+    }
+    pub fn brightness(&self) -> Option<u8> {
+        if let ControlMessage::Brightness(m) = self { Some(*m) } else { None }
+    }
+    pub fn saturation(&self) -> Option<u8> {
+        if let ControlMessage::Saturation(m) = self { Some(*m) } else { None }
+    }
+    pub fn rgb(&self) -> Option<u8> {
+        if let ControlMessage::RGB(m) = self { Some(*m) } else { None }
+    }
+    pub fn light(&self) -> Option<bool> {
+        if let ControlMessage::Light(m) = self {
+            if let LightCmd::On = *m { Some(true) } else { Some(false) }
+        } else {
+            None
+        }
+    }
+}
+
 impl From<ControlMessage> for String {
     fn from(msg: ControlMessage) -> String {
         let (cmd, param) = match msg {
