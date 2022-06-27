@@ -46,28 +46,26 @@ impl Server {
                     for gvm_client in filtered_clients {
                         // client can send multiple commands (actions)
                         for action in msg.iter() {
-                            // get list of states of the gvm client to send back
-                            let states = match action {
-                                ControlMessage::ReadState() =>
-                                    gvm_client.get_state()
+                            match action {
+                                ControlMessage::ReadState() => {
+                                    // get list of states of the gvm client to send back
+                                    let states = gvm_client.get_state()
                                         .await
-                                        .unwrap(),
+                                        .unwrap();
+                                    let cmd_json = serde_json::to_string(&states
+                                        .into_iter()
+                                        .map(|state| ServerMessage{client:gvm_client.id(), msg:vec![state]})
+                                        .collect::<Vec<ServerMessage>>())?;
+                                    socket.write(cmd_json.as_bytes()).await?;
+                                    socket.write("\n".as_bytes()).await?;
+                                    socket.flush().await?;
+                                },
                                 _ => {
+                                    // set new state on the gvm client
                                     gvm_client.send_to(&encode(&action).unwrap())
                                         .await
                                         .expect("Failed to send message to GVM Client");
-                                    vec![]
-                                },
-                            };
-                            // if there is a message to send back, do it here...
-                            if !states.is_empty() {
-                                let cmd_json = serde_json::to_string(&states
-                                    .into_iter()
-                                    .map(|state| ServerMessage{client:gvm_client.id(), msg:vec![state]})
-                                    .collect::<Vec<ServerMessage>>())?;
-                                socket.write(cmd_json.as_bytes()).await?;
-                                socket.write("\n".as_bytes()).await?;
-                                socket.flush().await?;
+                                }
                             };
                         }
                     }
