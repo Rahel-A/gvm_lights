@@ -25,8 +25,8 @@ $ docker run --rm --net=host --privileged -e clients="A4:C1:38:EE:EE:EE,A4:C1:38
 #### Requirements
 * Cargo version 1.60 or higher
 #### Building and running the Rust client
+For example, this command builds the project and gets the current state of the clients:
 ```
-$ # Builds the project and gets the current state of the clients:
 $ APP_HOST="0.0.0.0" APP_PORT="8631" cargo run --manifest-path=cli/Cargo.toml -- -i
 ```
 ### The Python client
@@ -34,6 +34,8 @@ Note that the purpose of this client is to serve as a intermediary between Rust 
 Make sure to take a look at [test.py](cli_py/tests/test.py) for an example script to running the client.
 #### Requirements
 * Python 3.10 or higher
+
+#### Building and running the Python client
 ```
 $ cd cli_py
 $ python -m venv .env
