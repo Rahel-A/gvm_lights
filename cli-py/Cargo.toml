@@ -1,0 +1,19 @@
+[package]
+name = "cli-py"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+name = "cli_py"
+crate-type = ["cdylib"]
+
+[dependencies]
+clap = "3.2"
+gvm_cli = { path = "../cli" }
+gvm_lights = { path = "../gvm_lights" }
+pyo3 = { version = "0.16.5", features = ["extension-module"] }
+pyo3-asyncio = { version = "0.16.0", features = ["attributes", "tokio-runtime"]}
+tokio = { version = "1", features = ["full"] }
+pretty_env_logger = "0.4"
+log = "0.4"
