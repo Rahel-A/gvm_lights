@@ -6,3 +6,6 @@ target/
 
 Cargo.lock
 
+**/.env
+__pycache__
+cli_py/cli_py
