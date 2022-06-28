@@ -65,6 +65,7 @@ impl Server {
                                 socket.write(cmd_json.as_bytes()).await?;
                                 socket.write("\n".as_bytes()).await?;
                                 socket.flush().await?;
+                                trace!("Sending message to back to requester client{:?}", cmd_json);
                             },
                             _ => {
                                 // set new state on the gvm client

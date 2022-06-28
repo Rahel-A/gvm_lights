@@ -39,7 +39,7 @@ impl Client {
         let receive = msg.contains(&ControlMessage::ReadState());
         let client = self.uid;
         let cmd_json = serde_json::to_string(&ServerMessage{client, msg})?;
-        info!("Sending message to server! {:?}", &cmd_json);
+        info!("Sending message to server! {:?} expect response? {receive}", &cmd_json);
         self.stream.write_all(cmd_json.as_bytes()).await?;
 
         let states = if receive {
@@ -55,7 +55,7 @@ impl Client {
         let states = loop {
             let n = self.stream.read_u8().await?;
             let mut client_states = Vec::new();
-            for i in 0..n {
+            for _ in 0..n {
                 let (id,states) = loop {
                     let mut buffer = [0; 500];
                     let mut id = 0;
@@ -74,10 +74,6 @@ impl Client {
                     };
                 };
                 client_states.push(ServerMessage{client: id, msg:states});
-                // Read the newline (terminator)!
-                if i != (n-1) {
-                    self.stream.read_u8().await?;
-                }
             }
             break client_states;
         };
