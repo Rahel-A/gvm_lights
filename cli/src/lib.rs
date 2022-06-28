@@ -42,7 +42,7 @@ pub fn cli() -> Command<'static> {
     let validator_u16 = clap::value_parser!(u16);
 
     Command::new("GVM Lights")
-        .version("0.1.0")
+        .version(env!("CARGO_PKG_VERSION"))
         .arg(Arg::new("light")
                   .long("light")
                   .short('l')

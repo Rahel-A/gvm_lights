@@ -1,8 +1,8 @@
 [package]
 name = "gvm_cli"
-version = "0.1.0"
-authors = ["Maxim Lukiyanov <maxiluk@gmail.com>"]
-edition = "2018"
+version = "0.2.0"
+authors = ["Maxim Lukiyanov <maxiluk@gmail.com>", "Rahel A <rahel@tuta.io>"]
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
