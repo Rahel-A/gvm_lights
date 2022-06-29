@@ -9,7 +9,6 @@ edition = "2021"
 [dependencies]
 clap = "3.2"
 gvm_lights = { path = "../gvm_lights" }
-gvm_server = { path = "../gvm_server" }
 tokio = { version = "1", features = ["full"] }
 pretty_env_logger = "0.4"
 log = "0.4"

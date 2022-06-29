@@ -1,6 +1,5 @@
 use log::info;
 use dotenv::dotenv;
-use gvm_server::Server;
 use gvm_cli::Client;
 
 #[tokio::main]
@@ -14,28 +13,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let matches = gvm_cli::cli().get_matches();
 
-    if matches.is_present("server") {
-        match dotenv::var("clients") {
-            Ok(gvm_clients) => {
-                let mut server = Server::new(address, gvm_clients).await?;
-                server.run().await?;
-            }
-            _ => panic!("Can't initialise server without target GVM lights")
-        };
-    }
-    else {
-        let target = matches.get_one::<u8>("client");
-        let cmd = gvm_cli::find_command(&matches).expect("No command detected in arguments");
-        info!("Parsed arguments into: {:?}", cmd);
+    let target = matches.get_one::<u8>("client");
+    let cmd = gvm_cli::find_command(&matches).expect("No command detected in arguments");
+    info!("Parsed arguments into: {:?}", cmd);
 
-        let id = *target.unwrap();
-        let clients = Client::new(address, id).await?;
-        for mut target in clients.into_iter().filter(|c| id == 255 || c.uid == id) {
-            if let Some(states) = target.send_message(vec!(cmd)).await? {
-                println!("Received message: {states:?}");
-            }
+    let id = *target.unwrap();
+    let clients = Client::new(address, id).await?;
+    for mut target in clients.into_iter().filter(|c| id == 255 || c.uid == id) {
+        if let Some(states) = target.send_message(vec!(cmd)).await? {
+            println!("Received message: {states:?}");
         }
-    };
+    }
 
     Ok(())
 }
