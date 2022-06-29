@@ -1,16 +1,15 @@
 import asyncio
-import cli_py
-import time
+import gvm_lights_lib
 import os
 
 def main():
     run()
 
 async def run():
-    cli_py.initialise_log()
-    test_off = cli_py.PyServerMessage("--light off")
-    test_on = cli_py.PyServerMessage("--light on")
-    clients = await cli_py.new(f"{APP_HOST}:{APP_PORT}")
+    gvm_lights_lib.initialise_log()
+    test_off = gvm_lights_lib.PyServerMessage("--light off")
+    test_on = gvm_lights_lib.PyServerMessage("--light on")
+    clients = await gvm_lights_lib.new(f"{APP_HOST}:{APP_PORT}")
     #await clients[0].send_message(test_off)
     t1 = await clients[0].get_state()
     t2 = await clients[1].get_state()

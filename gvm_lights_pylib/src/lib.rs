@@ -107,7 +107,7 @@ impl PyClient {
 
 /// A Python module implemented in Rust.
 #[pymodule]
-fn cli_py(_py: Python, m: &PyModule) -> PyResult<()> {
+fn gvm_lights_lib(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<PyServerMessage>()?;
     m.add_class::<PyClient>()?;
     m.add_function(wrap_pyfunction!(new, m)?)?;

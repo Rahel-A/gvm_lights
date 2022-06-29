@@ -3,7 +3,7 @@ requires = ["maturin>=0.12,<0.13"]
 build-backend = "maturin"
 
 [project]
-name = "cli_py"
+name = "gvm_lights_lib"
 version = "0.2.0"
 author = ["Rahel A"]
 author_email = ["<rahel@tuta.io>"]
