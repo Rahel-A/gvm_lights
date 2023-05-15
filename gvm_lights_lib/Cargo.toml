@@ -10,9 +10,11 @@ name = "gvm_lights_lib"
 crate-type = ["cdylib"]
 
 [dependencies]
-clap = "3.2"
+# Use Bind to gvm_cli as an intermediary:
 gvm_cli = { path = "../cli" }
-gvm_lights = { path = "../gvm_lights" }
+clap = "3.2"
+
+gvm_server = { path = "../gvm_server" }
 pyo3 = { version = "0.16.5", features = ["extension-module"] }
 pyo3-asyncio = { version = "0.16.0", features = ["attributes", "tokio-runtime"]}
 tokio = { version = "1", features = ["full"] }

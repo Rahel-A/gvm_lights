@@ -1,37 +1,35 @@
 use clap::{Arg, Command, PossibleValue, ArgMatches};
-use gvm_lights::{ControlMessage, LightCmd, ModeCmd};
+use gvm_server::gvm_node_command::{GvmNodeCommand, LightCmd, ModeCmd};
 
 pub mod client;
 pub use client::Client;
 
-pub fn find_command(matches: &ArgMatches) -> Option<ControlMessage> {
+pub fn find_command(matches: &ArgMatches) -> Option<GvmNodeCommand> {
     if let Some(s) = matches.get_one::<String>("light") {
         Some(match s.as_str() {
-            "on" => ControlMessage::Light(LightCmd::On),
-            "off" => ControlMessage::Light(LightCmd::Off),
+            "on" => GvmNodeCommand::Light(LightCmd::On),
+            "off" => GvmNodeCommand::Light(LightCmd::Off),
             _ => panic!("Incorrect argument passed")
         })
     } else if let Some(s) = matches.get_one::<String>("mode") {
         Some(match s.as_str() {
-            "CT" => ControlMessage::Mode(ModeCmd::ColourTemp),
-            "HS" => ControlMessage::Mode(ModeCmd::HueSat),
-            "Sc" => ControlMessage::Mode(ModeCmd::Scenes),
+            "CT" => GvmNodeCommand::Mode(ModeCmd::ColourTemp),
+            "HS" => GvmNodeCommand::Mode(ModeCmd::HueSat),
+            "Sc" => GvmNodeCommand::Mode(ModeCmd::Scenes),
             _ => panic!("Incorrect argument passed")
         })
     } else if let Some(br) = matches.get_one::<u8>("brightness") {
-        Some(ControlMessage::Brightness(*br))
+        Some(GvmNodeCommand::Brightness(*br))
     } else if let Some(t) = matches.get_one::<u16>("temperature") {
-        Some(ControlMessage::Temperature(*t))
+        Some(GvmNodeCommand::Temperature(*t))
     } else if let Some(h) = matches.get_one::<u16>("hue") {
-        Some(ControlMessage::Hue(*h))
+        Some(GvmNodeCommand::Hue(*h))
     } else if let Some(sat) = matches.get_one::<u8>("saturation") {
-        Some(ControlMessage::Saturation(*sat))
+        Some(GvmNodeCommand::Saturation(*sat))
     } else if let Some(sc) = matches.get_one::<u8>("scene") {
-        Some(ControlMessage::Scene(*sc))
+        Some(GvmNodeCommand::Scene(*sc))
     } else if let Some(r) = matches.get_one::<u8>("rgb") {
-        Some(ControlMessage::RGB(*r))
-    } else if matches.contains_id("state") {
-        Some(ControlMessage::ReadState())
+        Some(GvmNodeCommand::RGB(*r))
     } else {
         None
     }
