@@ -1,0 +1,50 @@
+FROM --platform=$BUILDPLATFORM rust:latest as builder
+ARG TARGET="aarch64-unknown-linux-gnu"
+
+RUN dpkg --add-architecture arm64
+RUN apt-get update && apt-get install -y bluez bluetooth libdbus-1-dev libdbus-1-dev:arm64 pkg-config
+
+# Cross compile
+RUN apt-get install -y g++-aarch64-linux-gnu libc6-dev-arm64-cross
+RUN rustup target add $TARGET
+RUN rustup toolchain install stable-$TARGET
+
+ENV CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc \
+    CC_aarch64_unknown_linux_gnu_gcc=aarch64-linux-gnu-gcc \
+    CXX_aarch64_unknown_linux_gnu_gcc=aarch64-linux-gnu-g++
+ENV RUSTFLAGS="-L /usr/aarch64-linux-gnu/lib/ -L /usr/lib/aarch64-linux-gnu/" 
+ENV PKG_CONFIG_PATH="/usr/lib/aarch64-linux-gnu/pkgconfig"
+ENV PKG_CONFIG_ALLOW_CROSS="true"
+
+FROM builder as build-cache
+ARG TARGET="aarch64-unknown-linux-gnu"
+
+# Build dependencies first (first iterative builds of app)
+WORKDIR /tmp
+RUN cd /tmp && USER=root cargo new --bin gvm_server
+COPY gvm_server/Cargo.toml gvm_server/
+RUN cargo build --release --target $TARGET --manifest-path=gvm_server/Cargo.toml
+
+FROM build-cache as build-binary
+ARG TARGET="aarch64-unknown-linux-gnu"
+WORKDIR /tmp
+RUN cd /tmp
+COPY gvm_server/src gvm_server/src
+RUN cargo build --release --target $TARGET --manifest-path=gvm_server/Cargo.toml
+
+FROM messense/rust-musl-cross:aarch64-musl as final
+ARG TARGET="aarch64-unknown-linux-gnu"
+ARG APP_PORT
+ENV APP_PORT=${APP_PORT:-8631}
+EXPOSE $APP_PORT
+ARG APP_HOST
+ENV APP_HOST=${APP_HOST:-0.0.0.0}
+ARG APP_CLIENTS
+ENV APP_CLIENTS=${APP_CLIENTS}
+
+RUN apt-get update && apt-get install -y bluez bluetooth libdbus-1-3 && rm -rf /var/lib/apt/lists/*
+
+COPY --from=build-binary /tmp/gvm_server/target/$TARGET/release/gvm_server /
+
+COPY docker-entrypoint-server.sh /
+ENTRYPOINT /docker-entrypoint-server.sh

@@ -1,11 +1,16 @@
 #!/bin/bash
 
-service dbus start
 bluetoothd &
-bluetoothctl power off
-sleep 1
+
+# For testing/reproducibility reset
+if [ "$RUST_LOG" == trace ]
+then
+    bluetoothctl power off
+    sleep 1
+fi
+
 bluetoothctl power on
-sleep 1
+sleep 3
 
 if [ "$RUST_LOG" == trace ]
 then
@@ -13,4 +18,4 @@ then
 fi
 
 
-/usr/local/bin/gvm_lights --server
+/gvm_server
