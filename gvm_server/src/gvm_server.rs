@@ -81,7 +81,7 @@ impl Listener {
         let mut gvm_nodes: Vec<GvmNode800D> = Vec::new();
         match nodes {
             Some(nodes) => {
-                   info!("Searching for GVM Nodes: {}", nodes);
+                info!("Searching for GVM Nodes: {}", nodes);
                 let mut counter = 1;
                 for bt_address in nodes.split(',').collect::<Vec<_>>().into_iter() {
                     gvm_nodes.push(GvmNode800D::new_single(counter, bt_address).await?);

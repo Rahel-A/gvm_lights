@@ -39,8 +39,6 @@ ENV APP_PORT=${APP_PORT:-8631}
 EXPOSE $APP_PORT
 ARG APP_HOST
 ENV APP_HOST=${APP_HOST:-0.0.0.0}
-ARG APP_CLIENTS
-ENV APP_CLIENTS=${APP_CLIENTS}
 
 RUN apt-get update && apt-get install -y bluez bluetooth libdbus-1-3 && rm -rf /var/lib/apt/lists/*
 

@@ -13,6 +13,7 @@ async fn main() -> GvmServerResult<()> {
     pretty_env_logger::init();
     dotenv().ok();
 
+    // If `APP_CLIENTS` was not provided, will search for gvm nodes
     match dotenv::var("APP_CLIENTS") {
         Ok(gvm_nodes) => gvm_server::run(address, Some(gvm_nodes), signal::ctrl_c()).await,
         Err(_) => gvm_server::run(address, None, signal::ctrl_c()).await,
