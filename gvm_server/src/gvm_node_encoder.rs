@@ -1,4 +1,4 @@
-use crate::gvm_node_command::{GvmNodeCommand, LightCmd, ModeCmd};
+use crate::gvm_node_command::{GvmNodeCommand, LightCmd, ModeCmd, SceneCmd};
 
 pub trait NodeCommandEncoder {
     fn encode(&self) -> Vec<u8>;
@@ -45,10 +45,16 @@ impl NodeCommandEncoder for GvmNodeCommand {
                 ModeCmd::HueSat => (b"06", b"02".to_vec()),
                 ModeCmd::Scenes => (b"06", b"03".to_vec()),
             },
-            GvmNodeCommand::Scene(scene) => {
-                let scene = if *scene > 8 { 0 } else { *scene };
-                (b"07", hex::encode_upper([scene]).into_bytes())
-            }
+            GvmNodeCommand::Scene(scene) => match scene {
+                SceneCmd::Lightning => (b"07", b"01".to_vec()),
+                SceneCmd::CopCar => (b"07", b"02".to_vec()),
+                SceneCmd::Candle => (b"07", b"03".to_vec()),
+                SceneCmd::TV => (b"07", b"04".to_vec()),
+                SceneCmd::BadBulb => (b"07", b"05".to_vec()),
+                SceneCmd::Party => (b"07", b"06".to_vec()),
+                SceneCmd::Disco => (b"07", b"07".to_vec()),
+                SceneCmd::Paparazzi => (b"07", b"08".to_vec()),
+            },
         };
         let mut c = cmd.to_vec();
         c.append(&mut b"01".to_vec());

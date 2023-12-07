@@ -1,5 +1,5 @@
-use clap::{Arg, Command, PossibleValue, ArgMatches};
-use gvm_server::gvm_node_command::{GvmNodeCommand, LightCmd, ModeCmd};
+use clap::{Arg, ArgMatches, Command, PossibleValue};
+use gvm_server::gvm_node_command::{GvmNodeCommand, LightCmd, ModeCmd, SceneCmd};
 
 pub mod client;
 pub use client::Client;
@@ -9,14 +9,14 @@ pub fn find_command(matches: &ArgMatches) -> Option<GvmNodeCommand> {
         Some(match s.as_str() {
             "on" => GvmNodeCommand::Light(LightCmd::On),
             "off" => GvmNodeCommand::Light(LightCmd::Off),
-            _ => panic!("Incorrect argument passed")
+            _ => panic!("Incorrect argument passed"),
         })
     } else if let Some(s) = matches.get_one::<String>("mode") {
         Some(match s.as_str() {
             "CT" => GvmNodeCommand::Mode(ModeCmd::ColourTemp),
             "HS" => GvmNodeCommand::Mode(ModeCmd::HueSat),
             "Sc" => GvmNodeCommand::Mode(ModeCmd::Scenes),
-            _ => panic!("Incorrect argument passed")
+            _ => panic!("Incorrect argument passed"),
         })
     } else if let Some(br) = matches.get_one::<u8>("brightness") {
         Some(GvmNodeCommand::Brightness(*br))
@@ -26,8 +26,18 @@ pub fn find_command(matches: &ArgMatches) -> Option<GvmNodeCommand> {
         Some(GvmNodeCommand::Hue(*h))
     } else if let Some(sat) = matches.get_one::<u8>("saturation") {
         Some(GvmNodeCommand::Saturation(*sat))
-    } else if let Some(sc) = matches.get_one::<u8>("scene") {
-        Some(GvmNodeCommand::Scene(*sc))
+    } else if let Some(sc) = matches.get_one::<String>("scene") {
+        Some(match sc.as_str() {
+            "flicker_lighting" => GvmNodeCommand::Scene(SceneCmd::Lightning),
+            "police_strobe" => GvmNodeCommand::Scene(SceneCmd::CopCar),
+            "flicker_warm" => GvmNodeCommand::Scene(SceneCmd::Candle),
+            "flicker_cool" => GvmNodeCommand::Scene(SceneCmd::TV),
+            "flicker_loose_bulb" => GvmNodeCommand::Scene(SceneCmd::BadBulb),
+            "cycle_colours" => GvmNodeCommand::Scene(SceneCmd::Party),
+            "disco" => GvmNodeCommand::Scene(SceneCmd::Disco),
+            "flicker_photoshoot" => GvmNodeCommand::Scene(SceneCmd::Disco),
+            _ => panic!("Incorrect argument passed"),
+        })
     } else if let Some(r) = matches.get_one::<u8>("rgb") {
         Some(GvmNodeCommand::RGB(*r))
     } else {
@@ -41,60 +51,78 @@ pub fn cli() -> Command<'static> {
 
     Command::new("GVM Lights")
         .version(env!("CARGO_PKG_VERSION"))
-        .arg(Arg::new("light")
-                  .long("light")
-                  .short('l')
-                  .takes_value(true)
-                  .value_parser([
-                      PossibleValue::new("on"),
-                      PossibleValue::new("off")]))
-        .arg(Arg::new("brightness")
-                  .long("brightness")
-                  .short('b')
-                  .value_parser(validator_u8)
-                  .takes_value(true))
-        .arg(Arg::new("temperature")
-                  .long("temperature")
-                  .short('t')
-                  .value_parser(validator_u16)
-                  .takes_value(true))
-        .arg(Arg::new("hue")
-                  .long("hue")
-                  .short('h')
-                  .value_parser(validator_u16)
-                  .takes_value(true))
-        .arg(Arg::new("saturation")
-                  .long("saturation")
-                  .short('s')
-                  .value_parser(validator_u8)
-                  .takes_value(true))
-        .arg(Arg::new("mode")
-                  .long("mode")
-                  .short('m')
-                  .takes_value(true)
-                  .value_parser([
-                      PossibleValue::new("CT"),
-                      PossibleValue::new("HS"),
-                      PossibleValue::new("Sc")]))
-        .arg(Arg::new("scene")
-                  .long("scene")
-                  .short('z')
-                  .value_parser(validator_u8)
-                  .takes_value(true))
-        .arg(Arg::new("rgb")
-                  .long("rgb")
-                  .short('r')
-                  .value_parser(validator_u8)
-                  .takes_value(true))
-        .arg(Arg::new("state")
-                  .long("state")
-                  .short('i')
-                  .takes_value(false))
-        .arg(Arg::new("client")
-                  .long("client")
-                  .default_value("255")
-                  .value_parser(validator_u8)
-                  .short('c')
-                  .takes_value(true))
+        .arg(
+            Arg::new("light")
+                .long("light")
+                .short('l')
+                .takes_value(true)
+                .value_parser([PossibleValue::new("on"), PossibleValue::new("off")]),
+        )
+        .arg(
+            Arg::new("brightness")
+                .long("brightness")
+                .short('b')
+                .value_parser(validator_u8)
+                .takes_value(true),
+        )
+        .arg(
+            Arg::new("temperature")
+                .long("temperature")
+                .short('t')
+                .value_parser(validator_u16)
+                .takes_value(true),
+        )
+        .arg(
+            Arg::new("hue")
+                .long("hue")
+                .short('h')
+                .value_parser(validator_u16)
+                .takes_value(true),
+        )
+        .arg(
+            Arg::new("saturation")
+                .long("saturation")
+                .short('s')
+                .value_parser(validator_u8)
+                .takes_value(true),
+        )
+        .arg(
+            Arg::new("mode")
+                .long("mode")
+                .short('m')
+                .takes_value(true)
+                .value_parser([
+                    PossibleValue::new("CT"),
+                    PossibleValue::new("HS"),
+                    PossibleValue::new("Sc"),
+                ]),
+        )
+        .arg(
+            Arg::new("scene")
+                .long("scene")
+                .short('z')
+                .value_parser(validator_u8)
+                .takes_value(true),
+        )
+        .arg(
+            Arg::new("rgb")
+                .long("rgb")
+                .short('r')
+                .value_parser(validator_u8)
+                .takes_value(true),
+        )
+        .arg(
+            Arg::new("state")
+                .long("state")
+                .short('i')
+                .takes_value(false),
+        )
+        .arg(
+            Arg::new("client")
+                .long("client")
+                .default_value("255")
+                .value_parser(validator_u8)
+                .short('c')
+                .takes_value(true),
+        )
 }
-

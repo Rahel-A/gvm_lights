@@ -41,7 +41,7 @@ impl GvmNode800D {
                     .unwrap_or("".to_string())
                     .to_string()
             {
-                trace!("Found GVM Light node!: {:?}", p);
+                trace!("Found GVM Light node!: {:?} {:?}", p, p.id());
                 gvm_lights.push(p);
             }
         }

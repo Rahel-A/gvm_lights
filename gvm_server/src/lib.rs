@@ -15,7 +15,7 @@ mod gvm_node_encoder;
 use gvm_node_encoder::NodeCommandEncoder;
 
 pub mod gvm_node_command;
-pub use gvm_node_command::{GvmNodeCommand, LightCmd, ModeCmd};
+pub use gvm_node_command::{GvmNodeCommand, LightCmd, ModeCmd, SceneCmd};
 pub mod gvm_node_status;
 pub use gvm_node_status::GvmNodeStatus;
 
