@@ -57,6 +57,10 @@ where
         }
         _ = shutdown => {
             info!("shutting down server");
+            for mut node in server.gvm_nodes {
+                let _ = node.disconnect().await?;
+                drop(node);
+            }
         }
     }
 

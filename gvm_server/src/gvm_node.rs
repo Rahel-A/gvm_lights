@@ -152,6 +152,23 @@ impl GvmNode800D {
         })
     }
 
+    pub async fn disconnect(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        let light = &self.adapter;
+        let chars = light.characteristics();
+        let cmd_char = chars
+            .iter()
+            .find(|c| c.uuid == LIGHT_CHARACTERISTIC_UUID)
+            .expect("Unable to find characterics");
+
+        if cmd_char.properties.contains(CharPropFlags::NOTIFY) {
+            info!("unsubscribing to notifications");
+            light.unsubscribe(&cmd_char).await?;
+        }
+        light.disconnect().await?;
+        info!("disconnected from light");
+        Ok(())
+    }
+
     pub async fn get_state(&mut self) -> Result<GvmNodeStatus, Box<dyn std::error::Error>> {
         let light = &self.adapter;
         let msg: &[u8] = b"4C5409000053000001009474FF";

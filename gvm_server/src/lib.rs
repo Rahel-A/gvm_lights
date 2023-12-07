@@ -1,5 +1,7 @@
-pub mod gvm_server;
-pub use gvm_server::run;
+#[cfg(not(feature = "mqtt"))]
+pub mod gvm_server_custom;
+#[cfg(not(feature = "mqtt"))]
+pub use gvm_server_custom::run;
 
 pub mod gvm_server_consts;
 pub mod gvm_server_error;
