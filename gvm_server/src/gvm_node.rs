@@ -61,6 +61,9 @@ impl GvmNode800D {
     pub fn id(&self) -> usize {
         self.id
     }
+    pub fn hid(&self) -> String {
+        self.adapter.address().to_string()
+    }
 
     pub async fn close(&self) -> GvmNodeResult<()> {
         Ok(self.adapter.disconnect().await?)
@@ -155,6 +158,7 @@ impl GvmNode800D {
             .expect("Unable to find characterics");
 
         if cmd_char.properties.contains(CharPropFlags::NOTIFY) {
+            // TODO does disconnect or unsubscribe take long time?
             info!("unsubscribing to notifications");
             light.unsubscribe(&cmd_char).await?;
         }

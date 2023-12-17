@@ -1,7 +1,25 @@
 #[cfg(not(feature = "mqtt"))]
 pub mod gvm_server_custom;
 #[cfg(not(feature = "mqtt"))]
-pub use gvm_server_custom::run;
+pub use gvm_server_custom::run as custom_run;
+
+#[cfg(feature = "mqtt")]
+pub mod gvm_server_mqtt;
+#[cfg(feature = "mqtt")]
+pub use gvm_server_mqtt::run as mqtt_run;
+#[cfg(feature = "mqtt")]
+pub mod gvm_node_mqtt;
+pub use gvm_node_mqtt::MqttGvmNode800D;
+
+#[cfg(feature = "mqtt")]
+pub mod gvm_server_mqtt_light_entity;
+
+#[cfg(feature = "mqtt")]
+pub mod gvm_server_mqtt_error;
+#[cfg(feature = "mqtt")]
+pub use gvm_server_mqtt_error::MqttError;
+#[cfg(feature = "mqtt")]
+pub mod gvm_server_mqtt_options;
 
 pub mod gvm_server_consts;
 pub mod gvm_server_error;

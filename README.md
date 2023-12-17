@@ -44,3 +44,7 @@ $ source .env/bin/activate
 $ maturin develop
 $ APP_HOST="10.139.21.199" python3 ./tests/test.py
 ```
+
+# Some noteable projects:
+* [hass-rs](https://github.com/YoloDev/hass-rs)
+

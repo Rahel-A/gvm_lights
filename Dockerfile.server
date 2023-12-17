@@ -3,19 +3,22 @@ FROM --platform=$BUILDPLATFORM rust:latest as builder
 RUN apt-get update && apt-get install -y bluez bluetooth libdbus-1-dev pkg-config
 
 # Build dependencies first (first iterative builds of app)
+FROM builder as build-cache
 WORKDIR /tmp
 RUN cd /tmp && USER=root cargo new --bin gvm_server
 COPY gvm_server/Cargo.toml gvm_server/
-RUN cargo build --release --manifest-path=gvm_server/Cargo.toml
+RUN cargo build --release --manifest-path=gvm_server/Cargo.toml --features=mqtt
 
-# Touch once after dependencies (bug?)
-RUN rm gvm_server/target/release/.fingerprint/gvm_* -r
+FROM build-cache as build-binary
+WORKDIR /tmp
+RUN cd /tmp
 COPY gvm_server/src gvm_server/src
-RUN cargo build --release --manifest-path=gvm_server/Cargo.toml
+RUN cargo build --release --manifest-path=gvm_server/Cargo.toml --features=mqtt
 
-FROM debian:buster-slim
+FROM rust:slim-bookworm as final
+
 RUN apt-get update && apt-get install -y bluez bluetooth libdbus-1-3 && rm -rf /var/lib/apt/lists/*
+COPY --from=build-binary /tmp/gvm_server/target/release/gvm_server /
+
 COPY docker-entrypoint-server.sh /
 ENTRYPOINT /docker-entrypoint-server.sh
-EXPOSE 8631
-COPY --from=builder /tmp/gvm_server/target/release/gvm_server /usr/local/bin/gvm_lights

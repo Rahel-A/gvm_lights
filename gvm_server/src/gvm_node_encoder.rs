@@ -1,4 +1,7 @@
-use crate::gvm_node_command::{GvmNodeCommand, LightCmd, ModeCmd, SceneCmd};
+use crate::{
+    gvm_node_command::{GvmNodeCommand, LightCmd, ModeCmd, SceneCmd},
+    gvm_node_consts::*,
+};
 
 pub trait NodeCommandEncoder {
     fn encode(&self) -> Vec<u8>;
