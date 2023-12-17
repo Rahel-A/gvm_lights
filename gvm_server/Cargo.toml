@@ -16,6 +16,7 @@ log = "0.4"
 dotenv = "0.15"
 serde = { version = "1", features = ["derive"] }
 bincode = "1.3"
+num = "0.4"
 
 
 # For gvm_node

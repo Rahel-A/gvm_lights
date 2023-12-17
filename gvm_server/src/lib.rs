@@ -20,6 +20,7 @@ pub mod gvm_node_command;
 pub use gvm_node_command::{GvmNodeCommand, LightCmd, ModeCmd, SceneCmd};
 pub mod gvm_node_status;
 pub use gvm_node_status::GvmNodeStatus;
+pub mod gvm_node_consts;
 pub mod gvm_node_error;
 pub use gvm_node_error::GvmNodeError;
 

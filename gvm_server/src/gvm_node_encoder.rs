@@ -21,15 +21,7 @@ impl NodeCommandEncoder for GvmNodeCommand {
                 (b"02", hex::encode_upper([br]).into_bytes())
             }
             GvmNodeCommand::Temperature(t) => {
-                let t = if *t < 3200 {
-                    3200
-                } else {
-                    if *t > 5600 {
-                        5600
-                    } else {
-                        *t
-                    }
-                };
+                let t = num::clamp(*t as u32, MIN_TEMPERATURE, MAX_TEMPERATURE);
                 (b"03", hex::encode_upper([(t / 100) as u8]).into_bytes())
             }
             GvmNodeCommand::Hue(hue) => {
