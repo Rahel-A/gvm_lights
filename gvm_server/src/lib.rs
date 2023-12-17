@@ -20,6 +20,9 @@ pub mod gvm_node_command;
 pub use gvm_node_command::{GvmNodeCommand, LightCmd, ModeCmd, SceneCmd};
 pub mod gvm_node_status;
 pub use gvm_node_status::GvmNodeStatus;
+pub mod gvm_node_error;
+pub use gvm_node_error::GvmNodeError;
 
 pub type Error = GvmServerError;
-pub type GvmServerResult<T> = std::result::Result<T, Box<dyn std::error::Error>>;
+pub type GvmServerResult<T> = std::result::Result<T, Box<dyn std::error::Error + Sync + Send>>;
+pub type GvmNodeResult<T> = std::result::Result<T, Box<dyn std::error::Error + Sync + Send>>;

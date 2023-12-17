@@ -1,9 +1,10 @@
 use crc_any::CRC;
 use futures::stream::StreamExt;
 use itertools::Itertools;
-use log::{info, trace};
+use log::{error, info, trace};
+use std::future;
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tokio::time;
 use uuid::Uuid;
 
@@ -13,23 +14,20 @@ use btleplug::api::{
 use btleplug::platform::{Adapter, Manager, Peripheral as UnknownPeripherals};
 
 use crate::gvm_node_status::units::*;
-use crate::{GvmNodeCommand, GvmNodeStatus, GvmServerError, NodeCommandEncoder};
+use crate::{GvmNodeCommand, GvmNodeError, GvmNodeResult, GvmNodeStatus, NodeCommandEncoder};
 
 #[derive(Clone)]
 pub struct GvmNode800D {
     id: usize,
     adapter: Arc<UnknownPeripherals>,
     characteric: Arc<Characteristic>,
-    last_received_state: GvmNodeStatus,
 }
 
 const LIGHT_CHARACTERISTIC_UUID: Uuid = Uuid::from_u128(0x00010203_0405_0607_0809_0a0b0c0d2b10);
 const LIGHT_NAME: &'static str = "BT_LED";
 
 impl GvmNode800D {
-    async fn find_all_gvm_lights(
-        adapter: &Adapter,
-    ) -> Result<Vec<UnknownPeripherals>, Box<dyn std::error::Error>> {
+    async fn find_all_gvm_lights(adapter: &Adapter) -> GvmNodeResult<Vec<UnknownPeripherals>> {
         let mut gvm_lights: Vec<UnknownPeripherals> = vec![];
         for p in adapter.peripherals().await.unwrap() {
             if LIGHT_NAME
@@ -51,7 +49,7 @@ impl GvmNode800D {
     async fn find_gvm_light(
         adapter: &Adapter,
         address: &str,
-    ) -> Result<Option<UnknownPeripherals>, Box<dyn std::error::Error>> {
+    ) -> GvmNodeResult<Option<UnknownPeripherals>> {
         for p in adapter.peripherals().await.unwrap() {
             if address == p.properties().await.unwrap().unwrap().address.to_string() {
                 return Ok(Some(p));
@@ -64,11 +62,11 @@ impl GvmNode800D {
         self.id
     }
 
-    pub async fn close(&self) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn close(&self) -> GvmNodeResult<()> {
         Ok(self.adapter.disconnect().await?)
     }
 
-    pub async fn setup() -> Result<Adapter, Box<dyn std::error::Error>> {
+    pub async fn setup() -> GvmNodeResult<Adapter> {
         let manager = Manager::new().await?;
         let adapter_list = manager.adapters().await?;
         let adapter = adapter_list
@@ -89,7 +87,7 @@ impl GvmNode800D {
 
     pub async fn connect(
         light: UnknownPeripherals,
-    ) -> Result<(UnknownPeripherals, Characteristic), Box<dyn std::error::Error>> {
+    ) -> GvmNodeResult<(UnknownPeripherals, Characteristic)> {
         // connect to the device
         light.connect().await?;
 
@@ -111,7 +109,7 @@ impl GvmNode800D {
         Ok((light, cmd_char.clone()))
     }
 
-    pub async fn new() -> Result<Vec<GvmNode800D>, Box<dyn std::error::Error>> {
+    pub async fn new() -> GvmNodeResult<Vec<GvmNode800D>> {
         let adapter = Self::setup().await?;
 
         let mut gvm_nodes: Vec<GvmNode800D> = vec![];
@@ -122,21 +120,17 @@ impl GvmNode800D {
                 id: (gvm_nodes.len() + 1) as usize,
                 adapter: Arc::new(connected_light),
                 characteric: Arc::new(cmd_char.clone()),
-                last_received_state: GvmNodeStatus::new(),
             })
         }
         if gvm_nodes.is_empty() {
             log::error!("Did not find any GVM Nodes");
-            Err(Box::new(GvmServerError::NodesNotFound))
+            Err(Box::new(GvmNodeError::NodesNotFound))
         } else {
             Ok(gvm_nodes)
         }
     }
 
-    pub async fn new_single(
-        uid: usize,
-        local_addr: &str,
-    ) -> Result<GvmNode800D, Box<dyn std::error::Error>> {
+    pub async fn new_single(uid: usize, local_addr: &str) -> GvmNodeResult<GvmNode800D> {
         let adapter = Self::setup().await?;
 
         let light = Self::find_gvm_light(&adapter, local_addr)
@@ -148,11 +142,11 @@ impl GvmNode800D {
             id: uid,
             adapter: Arc::new(connected_light),
             characteric: Arc::new(cmd_char.clone()),
-            last_received_state: GvmNodeStatus::new(),
         })
     }
 
-    pub async fn disconnect(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn disconnect(&mut self) -> GvmNodeResult<()> {
+        let start = Instant::now();
         let light = &self.adapter;
         let chars = light.characteristics();
         let cmd_char = chars
@@ -165,11 +159,13 @@ impl GvmNode800D {
             light.unsubscribe(&cmd_char).await?;
         }
         light.disconnect().await?;
-        info!("disconnected from light");
+        let duration = start.elapsed();
+        info!(target: "gvm_server_bench", "disconnected from light (took {duration:?})");
         Ok(())
     }
 
-    pub async fn get_state(&mut self) -> Result<GvmNodeStatus, Box<dyn std::error::Error>> {
+    pub async fn get_state(&self) -> GvmNodeResult<GvmNodeStatus> {
+        let start = Instant::now();
         let light = &self.adapter;
         let msg: &[u8] = b"4C5409000053000001009474FF";
         let cmd = GvmNode800D::format_msg(msg);
@@ -178,50 +174,44 @@ impl GvmNode800D {
         light
             .write(&self.characteric, &cmd, WriteType::WithoutResponse)
             .await?;
-        let mut notification_stream = light.notifications().await?.take(2);
 
-        // invalidate previous state
-        self.last_received_state = GvmNodeStatus::new();
+        let mut received_state = None;
 
-        while let Some(data) = notification_stream.next().await {
-            info!(
-                "Received data from {:?} [{:?}]: {:X?}",
-                light.address(),
-                data.uuid,
-                data.value
-            );
-            match data.value[2] {
-                0xE => {
-                    trace!("Received states from GVM Light node");
-                    self.last_received_state = GvmNodeStatus {
-                        power_state: PowerState {
-                            value: if data.value[6] == 1 { true } else { false },
-                        },
-                        brightness: Brightness {
-                            value: data.value[8],
-                        },
-                        temperature: Temperature {
-                            value: data.value[9] as u16 * 100,
-                        },
-                        hue: Hue {
-                            value: data.value[10] as u16 * 5,
-                        },
-                        saturation: Saturation {
-                            value: data.value[11],
-                        },
-                        rgb: RGB {
-                            value: data.value[7],
-                        },
-                    };
-                }
-                _ => trace!(
-                    "Received unknown message from GVM Light node of type: {:?}",
-                    data.value[2]
-                ),
-            };
+        if let Some(data) = light
+            .notifications()
+            .await?
+            .skip_while(|data| future::ready(data.value.capacity() > 2 && data.value[2] != 0xE))
+            .next()
+            .await
+        {
+            trace!("data: {:?}", data.value);
+            received_state = Some(GvmNodeStatus {
+                power_state: PowerState {
+                    value: if data.value[6] == 1 { true } else { false },
+                },
+                brightness: Brightness {
+                    value: data.value[8],
+                },
+                temperature: Temperature {
+                    value: data.value[9] as u16 * 100,
+                },
+                hue: Hue {
+                    value: data.value[10] as u16 * 5,
+                },
+                saturation: Saturation {
+                    value: data.value[11],
+                },
+                rgb: RGB {
+                    value: data.value[7],
+                },
+            });
+        } else {
+            error!("get_state failed")
         }
-        info!("last received states: {:?}", self.last_received_state);
-        Ok(self.last_received_state)
+
+        let duration = start.elapsed();
+        info!(target: "gvm_server_bench", "received states in {duration:?} {:?}", received_state);
+        received_state.ok_or(Box::new(GvmNodeError::StateRetrievalFailed))
     }
 
     // ASCI encoded hex bytes into raw hex values
@@ -237,7 +227,8 @@ impl GvmNode800D {
         msg_formatted
     }
 
-    pub async fn send_to<'a>(&self, cmd: GvmNodeCommand) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn send_to<'a>(&self, cmd: GvmNodeCommand) -> GvmNodeResult<()> {
+        let start = Instant::now();
         trace!("Encoding the following message: {:?}", &cmd);
         let dev_id = b"00";
         let dev_type = b"30";
@@ -259,7 +250,7 @@ impl GvmNode800D {
         buf.extend_from_slice(b"FF");
 
         let msg_formatted = GvmNode800D::format_msg(&buf);
-        info!("Writing command to GVM Light: {:X?}", msg_formatted);
+        trace!("Writing command to GVM Light: {:X?}", msg_formatted);
 
         let light = &self.adapter;
         light
@@ -270,16 +261,8 @@ impl GvmNode800D {
             )
             .await?;
 
-        let mut notification_stream = light.notifications().await?.take(1);
-        // Process while the BLE connection is not broken or stopped.
-        while let Some(data) = notification_stream.next().await {
-            info!(
-                "Received data from {:?} [{:?}]: {:X?}",
-                light.address(),
-                data.uuid,
-                data.value
-            );
-        }
+        let duration = start.elapsed();
+        info!(target: "gvm_server_bench", "Finished sending command to gvm node in {duration:?}");
 
         Ok(())
     }
