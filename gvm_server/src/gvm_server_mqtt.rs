@@ -60,9 +60,6 @@ where
         .await?;
     trace!("Subscribing to command topics");
     server.subscribe_commands().await?;
-    for entity in &mut server.gvm_entities {
-        entity.connected = true;
-    }
 
     // homeassistant can be really spammy!
     let (tx, rx) = mpsc::channel(20);
@@ -229,11 +226,7 @@ impl Handler {
         let mut gvm_entities: Vec<MqttGvmNode800D> = Vec::new();
         for node in gvm_nodes {
             let mqtt_light = MqttLight::new(server_node_id.clone());
-            gvm_entities.push(MqttGvmNode800D {
-                node,
-                mqtt_light,
-                connected: false,
-            });
+            gvm_entities.push(MqttGvmNode800D { node, mqtt_light });
         }
         self.gvm_entities = gvm_entities;
         Ok(())

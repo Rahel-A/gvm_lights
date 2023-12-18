@@ -10,7 +10,6 @@ use serde_json::json;
 pub struct MqttGvmNode800D {
     pub node: GvmNode800D,
     pub mqtt_light: MqttLight,
-    pub connected: bool,
 }
 
 pub struct UnconnectedGvmNode(MqttGvmNode800D);
@@ -104,33 +103,11 @@ impl MqttGvmNode800D {
         Ok(topic)
     }
     pub async fn subscribe_command_topics(&self) -> Result<(), MqttError> {
-        if !self.connected {
-            subscribe!(
-                self,
-                self.create_command_topic(&GvmHassTopic::state, false)?,
-                QoS::AtLeastOnce
-            );
-            // subscribe!(
-            //     self,
-            //     self.create_command_topic(&GvmHassTopic::brightness, false)?,
-            //     QoS::AtLeastOnce
-            // );
-            // subscribe!(
-            //     self,
-            //     self.create_command_topic(&GvmHassTopic::color_temp, false)?,
-            //     QoS::AtLeastOnce
-            // );
-            // subscribe!(
-            //     self,
-            //     self.create_command_topic(&GvmHassTopic::effect, false)?,
-            //     QoS::AtLeastOnce
-            // );
-            // subscribe!(
-            //     self,
-            //     self.create_command_topic(&GvmHassTopic::color_mode, false)?,
-            //     QoS::AtLeastOnce
-            // );
-        }
+        subscribe!(
+            self,
+            self.create_command_topic(&GvmHassTopic::state, false)?,
+            QoS::AtLeastOnce
+        );
         Ok(())
     }
     // manage availability separately (and not per gvm node) because of how last_will works
