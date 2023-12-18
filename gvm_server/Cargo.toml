@@ -1,6 +1,6 @@
 [package]
 name = "gvm_server"
-version = "0.3.0"
+version = "0.4.0"
 authors = ["Rahel A <rahel@tuta.io>"]
 edition = "2021"
 
