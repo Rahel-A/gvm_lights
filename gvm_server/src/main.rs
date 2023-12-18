@@ -19,6 +19,7 @@ async fn run_server(address: String, nodes: Option<String>) -> GvmServerResult<(
 async fn run_server(address: String, nodes: Option<String>) -> GvmServerResult<()> {
     use log::trace;
 
+    let node_id = dotenv::var("MQTT_NODE_ID").ok();
     let mut user = None;
     if let Ok(username) = dotenv::var("MQTT_USER") {
         if let Ok(password) = dotenv::var("MQTT_PASSWORD") {
@@ -33,7 +34,7 @@ async fn run_server(address: String, nodes: Option<String>) -> GvmServerResult<(
         rx.close()
     });
 
-    mqtt_run(address, user, nodes, tx).await
+    mqtt_run(node_id, address, user, nodes, tx).await
 }
 
 #[tokio::main]

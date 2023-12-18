@@ -12,7 +12,6 @@ use std::time::Duration;
 use tokio::sync::mpsc::{self, Receiver, UnboundedReceiver};
 
 pub struct Handler {
-    node_id: Option<String>,
     // shared connection to broker.
     broker: Option<AsyncClient>,
     // shared connection to nodes.
@@ -22,7 +21,6 @@ pub struct Handler {
 impl Handler {
     fn new() -> Self {
         Self {
-            node_id: None,
             broker: None,
             gvm_entities: vec![],
         }
@@ -30,6 +28,7 @@ impl Handler {
 }
 
 pub async fn run<A, B>(
+    node_id: Option<String>,
     address: A,
     credentials: Option<(B, B)>,
     nodes: Option<String>,
@@ -40,8 +39,7 @@ where
     B: Into<String>,
 {
     let mut server = Handler::new();
-    server.node_id = Some(String::from("office"));
-    server.connect_nodes(nodes).await?;
+    server.connect_nodes(nodes, node_id).await?;
     let addrs = address
         .to_socket_addrs()
         .unwrap()
@@ -202,14 +200,17 @@ impl Handler {
 
         trace!("Connecting to mqtt broker");
         let (broker, eventloop) = AsyncClient::new(mqttoptions, 10);
-        self.broker = Some(broker);
         for entity in &mut self.gvm_entities {
-            entity.mqtt_light.broker = self.broker.clone();
+            entity.mqtt_light.broker = Some(broker.clone());
         }
         Ok(eventloop)
     }
 
-    pub async fn connect_nodes(&mut self, nodes: Option<String>) -> GvmServerResult<()> {
+    pub async fn connect_nodes(
+        &mut self,
+        nodes: Option<String>,
+        server_node_id: Option<String>,
+    ) -> GvmServerResult<()> {
         let mut gvm_nodes: Vec<GvmNode800D> = Vec::new();
         match nodes {
             Some(nodes) => {
@@ -227,7 +228,7 @@ impl Handler {
         }
         let mut gvm_entities: Vec<MqttGvmNode800D> = Vec::new();
         for node in gvm_nodes {
-            let mqtt_light = MqttLight::new(self.node_id.clone());
+            let mqtt_light = MqttLight::new(server_node_id.clone());
             gvm_entities.push(MqttGvmNode800D {
                 node,
                 mqtt_light,
