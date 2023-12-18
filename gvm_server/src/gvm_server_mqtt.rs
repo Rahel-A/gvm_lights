@@ -16,14 +16,6 @@ pub struct Handler {
     gvm_entities: Vec<MqttGvmNode800D>,
 }
 
-impl Handler {
-    fn new() -> Self {
-        Self {
-            gvm_entities: vec![],
-        }
-    }
-}
-
 pub async fn run<A, B>(
     node_id: Option<String>,
     address: A,
@@ -35,8 +27,7 @@ where
     A: ToSocketAddrs + std::fmt::Display,
     B: Into<String>,
 {
-    let mut server = Handler::new();
-    server.connect_nodes(nodes, node_id).await?;
+    let mut server = Handler::connect_nodes(nodes, node_id).await?;
     let addrs = address
         .to_socket_addrs()
         .unwrap()
@@ -198,10 +189,10 @@ impl Handler {
     }
 
     pub async fn connect_nodes(
-        &mut self,
         nodes: Option<String>,
         server_node_id: Option<String>,
-    ) -> GvmServerResult<()> {
+    ) -> GvmServerResult<Handler> {
+        // find nodes
         let mut gvm_nodes: Vec<GvmNode800D> = Vec::new();
         match nodes {
             Some(nodes) => {
@@ -217,13 +208,13 @@ impl Handler {
                 gvm_nodes = GvmNode800D::new().await?;
             }
         }
+        // connect to nodes
         let mut gvm_entities: Vec<MqttGvmNode800D> = Vec::new();
         for node in gvm_nodes {
             let mqtt_light = MqttLight::new(server_node_id.clone());
             gvm_entities.push(MqttGvmNode800D { node, mqtt_light });
         }
-        self.gvm_entities = gvm_entities;
-        Ok(())
+        Ok(Handler { gvm_entities })
     }
 
     pub async fn subscribe_commands(&self) -> GvmServerResult<()> {
