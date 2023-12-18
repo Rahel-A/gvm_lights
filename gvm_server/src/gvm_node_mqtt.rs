@@ -141,6 +141,18 @@ impl MqttGvmNode800D {
             Ok(format!("homeassistant/light/status"))
         }
     }
+    /// warning: ATM this doesn't publish that each entity is available,
+    /// rather the status is shared, and defines that the mqttclient is available
+    pub async fn publish_node_available(&self) -> Result<(), MqttError> {
+        publish!(
+            self,
+            self.create_availability_topic()?,
+            QoS::AtLeastOnce,
+            false,
+            gvm_server_mqtt_options::payload_available()
+        );
+        Ok(())
+    }
     // Discovery config
     // <discovery_prefix>/<component>/[<node_id>/]<object_id>/config
     pub async fn publish_discovery_topic(&self) -> Result<(), MqttError> {

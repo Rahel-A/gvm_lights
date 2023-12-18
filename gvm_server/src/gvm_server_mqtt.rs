@@ -260,25 +260,9 @@ impl Handler {
         Ok(())
     }
     async fn publish_node_available(&self) -> Result<(), MqttError> {
-        // TODO this is a hacky solution because of how last will works
-        // shared availability topic between all gvm nodes
-        // last will sets offline to this shared state
-        // and we set online to this shared state
-        self.broker
-            .as_ref()
-            .expect("broker not configured")
-            .publish(
-                self.gvm_entities
-                    .first()
-                    .unwrap()
-                    .create_availability_topic()
-                    .expect("availability topic failed"),
-                QoS::AtLeastOnce,
-                false,
-                gvm_server_mqtt_options::payload_available(),
-            )
-            .await
-            .unwrap();
+        for gvm_entity in &self.gvm_entities {
+            gvm_entity.publish_node_available().await?;
+        }
         Ok(())
     }
 }
