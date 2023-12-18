@@ -12,9 +12,6 @@ pub struct MqttGvmNode800D {
     pub mqtt_light: MqttLight,
 }
 
-pub struct UnconnectedGvmNode(MqttGvmNode800D);
-pub struct ConnectedGvmNode(MqttGvmNode800D);
-
 macro_rules! subscribe {
     ($v:ident, $topic:expr, $qos:expr) => {
         trace!("subscribing to: {:?}", $topic);

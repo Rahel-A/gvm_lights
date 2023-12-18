@@ -1,5 +1,4 @@
 use dotenv::dotenv;
-use futures_util::Future;
 use tokio::signal;
 
 #[cfg(not(feature = "mqtt"))]

@@ -1,5 +1,4 @@
 use std::fmt;
-use std::io::{Error, ErrorKind};
 
 #[derive(Debug)]
 pub enum GvmNodeError {
@@ -26,6 +25,6 @@ impl From<std::io::Error> for GvmNodeError {
 
 impl fmt::Display for GvmNodeError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        std::error::Error::description(&self).fmt(f)
+        self.to_string().fmt(f)
     }
 }
