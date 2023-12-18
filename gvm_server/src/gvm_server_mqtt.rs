@@ -63,7 +63,7 @@ where
                     }
                     Err(e) => {
                         error!("MQTT error: {e:?}");
-                        //break;
+                        break;
                     }
                 }
             }
