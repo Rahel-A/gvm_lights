@@ -26,11 +26,7 @@ pub struct Handler {
     gvm_nodes: Vec<GvmNode800D>,
 }
 
-pub async fn run<A>(
-    address: A,
-    nodes: Option<String>,
-    shutdown: impl Future,
-) -> Result<(), Box<dyn std::error::Error>>
+pub async fn run<A>(address: A, nodes: Option<String>, shutdown: impl Future) -> GvmServerResult<()>
 where
     A: ToSocketAddrs + std::fmt::Display,
 {

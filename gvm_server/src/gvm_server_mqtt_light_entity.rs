@@ -1,6 +1,7 @@
 use crate::{
-    gvm_node_consts::kelvin_to_mireds,
+    gvm_node_consts::{kelvin_to_mireds, mireds_to_kelvin},
     gvm_node_status::{units::*, GvmNodeStatus},
+    GvmNodeCommand, GvmNodeError, LightCmd, ModeCmd, SceneCmd,
 };
 use rumqttc::AsyncClient;
 use serde::{Deserialize, Serialize};
@@ -273,5 +274,67 @@ impl From<(Hue, Saturation)> for GvmStatePayload {
         let mut retval = GvmStatePayload::new();
         retval.color = Some(colors);
         retval
+    }
+}
+
+impl From<Effect> for SceneCmd {
+    fn from(value: Effect) -> Self {
+        match value {
+            Effect::flicker_lightning => SceneCmd::Lightning,
+            Effect::police_strobe => SceneCmd::CopCar,
+            Effect::flicker_warm => SceneCmd::Candle,
+            Effect::flicker_cool => SceneCmd::TV,
+            Effect::flicker_loose_bulb => SceneCmd::BadBulb,
+            Effect::cycle_colors => SceneCmd::Party,
+            Effect::disco => SceneCmd::Disco,
+            Effect::flicker_photoshoot => SceneCmd::Paparazzi,
+        }
+    }
+}
+
+impl From<State> for LightCmd {
+    fn from(value: State) -> Self {
+        match value {
+            State::ON => LightCmd::On,
+            State::OFF => LightCmd::Off,
+        }
+    }
+}
+
+impl TryFrom<GvmStatePayload> for Vec<GvmNodeCommand> {
+    type Error = GvmNodeError;
+
+    fn try_from(value: GvmStatePayload) -> Result<Self, Self::Error> {
+        //let mut commands: Vec<GvmNodeCommand> = vec![];
+        let mut commands: Vec<Option<GvmNodeCommand>> = vec![];
+        commands.push(value.brightness.map(|v| GvmNodeCommand::Brightness(v)));
+        commands.push(value.color_mode.map(|v| match v {
+            ColorMode::hs => GvmNodeCommand::Mode(ModeCmd::HueSat),
+            ColorMode::color_temp => GvmNodeCommand::Mode(ModeCmd::ColourTemp),
+            _ => todo!(),
+        }));
+        commands.push(
+            value
+                .color_temp
+                .map(|v| GvmNodeCommand::Temperature(mireds_to_kelvin(v as f32) as u16)),
+        );
+
+        if let Some(mut map_colors) = value.color.map(|v| {
+            if let Some(HSMode { h, s }) = v.hs {
+                vec![
+                    Some(GvmNodeCommand::Hue(h as u16)),
+                    Some(GvmNodeCommand::Saturation(s as u8)),
+                ]
+            } else {
+                vec![]
+            }
+        }) {
+            commands.append(&mut map_colors);
+        }
+
+        commands.push(value.effect.map(|v| GvmNodeCommand::Scene(v.into())));
+        commands.push(value.state.map(|v| GvmNodeCommand::Light(v.into())));
+
+        Ok(commands.iter().filter_map(|c| c.to_owned()).collect())
     }
 }

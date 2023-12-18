@@ -9,6 +9,7 @@ pub mod gvm_server_mqtt;
 pub use gvm_server_mqtt::run as mqtt_run;
 #[cfg(feature = "mqtt")]
 pub mod gvm_node_mqtt;
+#[cfg(feature = "mqtt")]
 pub use gvm_node_mqtt::MqttGvmNode800D;
 
 #[cfg(feature = "mqtt")]
