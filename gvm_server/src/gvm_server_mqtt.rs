@@ -12,8 +12,6 @@ use std::time::Duration;
 use tokio::sync::mpsc::{self, Receiver};
 
 pub struct Handler {
-    // shared connection to broker.
-    broker: Option<AsyncClient>,
     // shared connection to nodes.
     gvm_entities: Vec<MqttGvmNode800D>,
 }
@@ -21,7 +19,6 @@ pub struct Handler {
 impl Handler {
     fn new() -> Self {
         Self {
-            broker: None,
             gvm_entities: vec![],
         }
     }
@@ -50,14 +47,6 @@ where
         .connect_broker(credentials, addrs.ip().to_string(), addrs.port() as u16)
         .await?;
 
-    let hass_status_topic = "homeassistant/status";
-    trace!("Subscribing to {hass_status_topic}");
-    server
-        .broker
-        .as_ref()
-        .unwrap()
-        .subscribe(hass_status_topic, QoS::AtLeastOnce)
-        .await?;
     trace!("Subscribing to command topics");
     server.subscribe_commands().await?;
 
@@ -200,6 +189,11 @@ impl Handler {
         for entity in &mut self.gvm_entities {
             entity.mqtt_light.broker = Some(broker.clone());
         }
+        let hass_status_topic = "homeassistant/status";
+        trace!("Subscribing to {hass_status_topic}");
+        broker
+            .subscribe(hass_status_topic, QoS::AtLeastOnce)
+            .await?;
         Ok(eventloop)
     }
 
