@@ -7,6 +7,7 @@ FROM builder as build-cache
 WORKDIR /tmp
 RUN cd /tmp && USER=root cargo new --bin gvm_server
 COPY gvm_server/Cargo.toml gvm_server/
+COPY .cargo ./
 RUN cargo build --release --manifest-path=gvm_server/Cargo.toml --features=mqtt
 
 FROM build-cache as build-binary

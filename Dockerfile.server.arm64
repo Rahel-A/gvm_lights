@@ -23,6 +23,7 @@ ARG TARGET="aarch64-unknown-linux-gnu"
 WORKDIR /tmp
 RUN cd /tmp && USER=root cargo new --bin gvm_server
 COPY gvm_server/Cargo.toml gvm_server/
+COPY .cargo ./
 RUN cargo build --release --target $TARGET --manifest-path=gvm_server/Cargo.toml
 
 FROM build-cache as build-binary
