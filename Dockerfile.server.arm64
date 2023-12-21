@@ -1,38 +1,31 @@
-FROM --platform=$BUILDPLATFORM rust:latest as builder
+FROM --platform=linux/amd64 rust:latest as builder
 ARG TARGET="aarch64-unknown-linux-gnu"
-
-RUN dpkg --add-architecture arm64
-RUN apt-get update && apt-get install -y bluez bluetooth libdbus-1-dev libdbus-1-dev:arm64 pkg-config
-
-# Cross compile
-RUN apt-get install -y g++-aarch64-linux-gnu libc6-dev-arm64-cross
-RUN rustup target add $TARGET
-RUN rustup toolchain install stable-$TARGET
-
-ENV CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc \
-    CC_aarch64_unknown_linux_gnu_gcc=aarch64-linux-gnu-gcc \
-    CXX_aarch64_unknown_linux_gnu_gcc=aarch64-linux-gnu-g++
-ENV RUSTFLAGS="-L /usr/aarch64-linux-gnu/lib/ -L /usr/lib/aarch64-linux-gnu/" 
+ENV CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc CXX_aarch64_unknown_linux_gnu=aarch64-linux-gnu-g++
 ENV PKG_CONFIG_PATH="/usr/lib/aarch64-linux-gnu/pkgconfig"
 ENV PKG_CONFIG_ALLOW_CROSS="true"
 
-FROM builder as build-cache
-ARG TARGET="aarch64-unknown-linux-gnu"
+RUN dpkg --add-architecture arm64
+RUN apt-get update && apt-get install -y bluez bluetooth libdbus-1-dev libdbus-1-dev:arm64 pkg-config
+RUN apt-get install -y g++-aarch64-linux-gnu libc6-dev-arm64-cross
+
+# Cross compile
+RUN rustup target add $TARGET
+RUN rustup toolchain install stable-$TARGET
+WORKDIR /tmp
+
+FROM --platform=linux/amd64 builder as build-cache
 
 # Build dependencies first (first iterative builds of app)
-WORKDIR /tmp
 RUN cd /tmp && USER=root cargo new --bin gvm_server
 COPY gvm_server/Cargo.toml gvm_server/
 RUN cargo build --release --target $TARGET --manifest-path=gvm_server/Cargo.toml --features=mqtt
 
-FROM build-cache as build-binary
-ARG TARGET="aarch64-unknown-linux-gnu"
-WORKDIR /tmp
-RUN cd /tmp
+FROM --platform=linux/amd64 build-cache as build-binary
+
 COPY gvm_server/src gvm_server/src
 RUN cargo build --release --target $TARGET --manifest-path=gvm_server/Cargo.toml --features=mqtt
 
-FROM messense/rust-musl-cross:aarch64-musl as final
+FROM debian:stable-slim as final
 ARG TARGET="aarch64-unknown-linux-gnu"
 
 RUN apt-get update && apt-get install -y bluez bluetooth libdbus-1-3 && rm -rf /var/lib/apt/lists/*
